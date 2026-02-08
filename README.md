@@ -1,4 +1,4 @@
-# Sports Motion Digital Twin (NLF, MMPose, SAM/SAM2)
+# Sports Motion Digital Twin (NLF & SAM2)
 
 Research notebook by **Tom Le Ber** and **Tony Perottino**, both in their **final year in the Math & CS double degree of University of Toulouse**.
 This repository is part of a **senior year academic research internship** (TER) at **IRIT** (Institute of Research in Computer Science of Toulouse).
