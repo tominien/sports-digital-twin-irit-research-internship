@@ -205,3 +205,6 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Je n'ajoute pas "frames.zip" pour l'instant, car il est vraiment trop gros. Je le fais dès que possible, désolé.
+./data/**/frames.zip
