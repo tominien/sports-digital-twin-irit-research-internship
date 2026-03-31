@@ -1,0 +1,75 @@
+\documentclass{article}
+
+% Gestion des polices en fonction de l'encodage (PDFLaTeX, XeLaTeX, LuaTeX ou autre) :
+\usepackage{ifxetex}
+\usepackage{mathtools}
+\usepackage{amssymb}
+\usepackage{ifluatex}
+\ifxetex
+  % XeTeX est utilisé :
+  \usepackage{fontspec}
+\else
+  \ifluatex
+    % LuaTeX est utilisé :
+    \usepackage{fontspec}
+  \else
+    % pdfLaTeX ou autre moteur est utilisé :
+    \usepackage[T1]{fontenc}
+    \usepackage[utf8]{inputenc}
+    \usepackage{lmodern}
+  \fi
+\fi
+
+% Autres packages :
+\usepackage[french]{babel}
+\usepackage{mdframed}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{stmaryrd}
+\usepackage[explicit]{titlesec}
+\usepackage{framed}
+\usepackage{amsthm}
+\usepackage{xcolor}
+\usepackage{tcolorbox}
+\tcbuselibrary{breakable}
+% Package permettant de générer des graphes :
+\usepackage{tikz}
+\usetikzlibrary{arrows}
+\usetikzlibrary{arrows.meta}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18} % Préciser la version de pgfplots afin qu'il soit compatible avec le type de cocument (ici "article").
+%package pour images :
+\usepackage{graphicx}
+\graphicspath{ {./ressources/} }
+\sloppy
+
+% --- Informations du document ---
+\title{Rapport d'étude sur TOM TODO ALED}
+\author{LE BER Tom \& PEROTTINO Tony}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+% --- Sommaire ---
+\newpage
+\tableofcontents
+\newpage
+
+% --- Introduction ---
+\section*{Préambule}
+\addcontentsline{toc}{section}{Préambule}
+Ce travail a été réalisé dans le cadre de la Double Licence Mathématiques-Informatique (MIDL) de l'université de Toulouse.
+Il correspond à la matière "Stage MIDL 2" consistant en un travail dirigé de recherche (TER) dans les domaines de l'informatique et/ou des mathématiques.
+Ce rapport fait office de compte-rendu de l'entièreté de notre travail de recherche.
+
+% --- Corps du document ---
+\section{Introduction au contexte de recherche}
+\subsection{}
+
+
+
+\end{document}
