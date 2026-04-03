@@ -1,0 +1,413 @@
+
+\documentclass[11pt,a4paper]{article}
+
+% Gestion des polices en fonction de l'encodage (PDFLaTeX, XeLaTeX, LuaTeX ou autre) :
+\usepackage{ifxetex}
+\usepackage{ifluatex}
+\ifxetex
+  \usepackage{fontspec}
+\else
+  \ifluatex
+    \usepackage{fontspec}
+  \else
+    \usepackage[T1]{fontenc}
+    \usepackage[utf8]{inputenc}
+    \usepackage{lmodern}
+  \fi
+\fi
+
+% Bibliothèques déjà présentes dans le document initial :
+\usepackage{mathtools}
+\usepackage{amssymb}
+\usepackage[french]{babel}
+\usepackage{mdframed}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{bookmark}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{stmaryrd}
+\usepackage[explicit]{titlesec}
+\usepackage{framed}
+\usepackage{amsthm}
+\usepackage{xcolor}
+\usepackage{tcolorbox}
+\tcbuselibrary{breakable}
+\usepackage{tikz}
+\usetikzlibrary{arrows}
+\usetikzlibrary{arrows.meta}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepackage{graphicx}
+
+% Bibliothèques complémentaires pour la mise en page :
+\usepackage[a4paper,left=2.0cm,right=2.0cm,top=2.3cm,bottom=2.5cm]{geometry}
+\usepackage{microtype}
+\usepackage{float}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{caption}
+\usepackage{subcaption}
+
+\graphicspath{{./ressources/}{./rapport_ressources/}}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.55em}
+\raggedbottom
+\emergencystretch=2em
+
+% Réglages des titres pour éviter les justifications disgracieuses :
+\titleformat{\section}{\normalfont\Large\bfseries\raggedright}{\thesection}{0.8em}{#1}
+\titleformat{\subsection}{\normalfont\large\bfseries\raggedright}{\thesubsection}{0.8em}{#1}
+\titleformat{\subsubsection}{\normalfont\normalsize\bfseries\raggedright}{\thesubsubsection}{0.8em}{#1}
+
+\captionsetup{
+  font=small,
+  labelfont=bf,
+  justification=centering,
+  singlelinecheck=false
+}
+
+% --- Macros utiles ---
+\newcommand{\todo}[1]{\textcolor{red}{[À compléter : #1]}}
+\newcommand{\rapportfigure}[4]{%
+\begin{figure}[H]
+    \centering
+    \IfFileExists{#1}
+    {\includegraphics[width=#2\textwidth]{#1}}
+    {\fbox{\parbox[c][4.6cm][c]{0.78\textwidth}{\centering Figure à ajouter : \path{#1}}}}
+    \caption{#3}
+    \label{#4}
+\end{figure}
+}
+
+% --- Informations du document ---
+\title{Méthodes de vision par ordinateur pour la segmentation, l'analyse de pose et la réinsertion vidéo}
+\author{Tom LE BER \and Tony PEROTTINO}
+\date{}
+
+\begin{document}
+
+\maketitle
+\begin{center}
+TER L3 MIDL -- Université de Toulouse
+\end{center}
+
+\newpage
+\tableofcontents
+\newpage
+
+\section*{Préambule}
+\addcontentsline{toc}{section}{Préambule}
+Ce document constitue une première version du rapport de TER réalisée à partir des notebooks de travail successifs développés au cours du projet.
+Il a vocation à être enrichi dans un second temps par l'ajout d'illustrations exportées depuis les notebooks, par une harmonisation du style et par la précision d'informations institutionnelles telles que les noms des encadrants, les dates exactes du stage et l'intitulé final retenu pour le rapport.
+
+Sauf mention contraire, la version \texttt{V3} du Google Colab est considérée comme la version principale du pipeline, tandis que la version \texttt{V4} correspond à une piste récente encore en cours de test autour de \texttt{SAM 3}.
+
+\section{Introduction}
+L'objectif général de ce TER est de mettre en place une chaîne de traitement permettant d'analyser une vidéo de danse, d'isoler automatiquement la personne présente dans la scène, puis de la réinsérer sur un nouveau fond de la manière la plus réaliste possible.
+Ce problème mobilise plusieurs thématiques de vision par ordinateur : l'analyse de pose, la segmentation vidéo, la reconstruction d'une vidéo détourée et l'évaluation qualitative et quantitative des résultats obtenus.
+
+Dans notre cas d'étude, la vidéo principale utilisée comme support expérimental est une vidéo de pole dance.
+Ce choix rend le problème particulièrement intéressant : les mouvements sont amples, les poses sont souvent atypiques, certaines parties du corps peuvent être partiellement occultées par la barre, et la segmentation doit rester cohérente d'une frame à l'autre malgré les changements rapides de position.
+En pratique, l'objectif n'est donc pas seulement de produire un masque correct sur une image isolée, mais de conserver une cohérence temporelle sur l'ensemble de la séquence.
+
+Au-delà de l'aspect applicatif, ce travail nous a également conduits à comparer plusieurs outils et plusieurs approches.
+Au fil du stage, nous avons ainsi construit plusieurs versions successives d'un notebook Google Colab, chacune correspondant à un état d'avancement du pipeline.
+La version \texttt{V1} se concentre principalement sur l'étude de \texttt{NLF}, la version \texttt{V2} introduit \texttt{SAM 2} pour la segmentation, la version \texttt{V3} ajoute une réflexion plus poussée sur l'évaluation qualitative des masques et de la reconstruction vidéo, et la version \texttt{V4} constitue une tentative d'évolution vers \texttt{SAM 3}.
+
+\section{Problématique et objectifs}
+Le problème étudié peut être formulé de la manière suivante : étant donnée une vidéo contenant une danseuse, comment obtenir automatiquement un détouré suffisamment précis et temporellement stable pour permettre une réinsertion convaincante sur un nouveau fond ?
+Cette formulation, simple en apparence, recouvre en réalité plusieurs sous-problèmes.
+
+Le premier sous-problème est celui de la \emph{localisation} et de l'\emph{analyse de pose}.
+Une estimation de pose correcte permet d'obtenir une information géométrique utile sur la position du corps dans l'image et sur son évolution au cours du temps.
+Le deuxième sous-problème est celui de la \emph{segmentation vidéo} : il ne s'agit pas seulement de segmenter une personne sur une frame, mais de conserver un masque cohérent tout au long de la séquence.
+Enfin, le troisième sous-problème est celui de la \emph{réinsertion} : même avec des masques satisfaisants, la qualité du rendu final dépend du positionnement du sujet sur le nouveau fond, de la prise en compte de la géométrie de la scène et de la stabilité visuelle entre les frames.
+
+À partir de cette problématique, nous avons retenu trois objectifs principaux :
+\begin{itemize}
+    \item mettre en place un pipeline fonctionnel capable d'isoler automatiquement la danseuse sur une séquence vidéo ;
+    \item étudier plusieurs outils d'analyse de pose et de segmentation afin de comparer leurs apports et leurs limites ;
+    \item proposer des critères d'évaluation, visuels et quantitatifs, permettant de juger la qualité de la reconstruction vidéo produite.
+\end{itemize}
+
+\section{Évolution du travail et des notebooks}
+Le travail réalisé s'est structuré autour de quatre versions principales d'un notebook Google Colab.
+Ces notebooks ne correspondent pas simplement à des copies successives d'un même code : ils reflètent une évolution progressive de la méthodologie et de la manière d'aborder le problème.
+
+\subsection{Version V1 : étude de \texttt{NLF}}
+La première version du notebook est centrée sur l'étude de \texttt{NLF}.
+L'objectif principal est alors d'évaluer la capacité du modèle à détecter la personne présente dans la vidéo et à fournir une estimation de pose 2D/3D exploitable.
+Cette première étape a permis de construire des visualisations simples, de mesurer le temps d'inférence et de mieux comprendre le type d'information que l'analyse de pose pouvait apporter au reste du pipeline.
+
+\subsection{Version V2 : intégration de \texttt{SAM 2}}
+La deuxième version introduit un changement important : l'ajout de \texttt{SAM 2} pour la segmentation.
+L'idée est d'utiliser les résultats de l'analyse de pose comme points d'ancrage, puis de propager les masques dans la vidéo.
+Cette version constitue le premier véritable pipeline de segmentation et de reconstruction de la séquence détourée.
+Elle introduit également les premières réflexions sur la réinsertion et sur les limites concrètes du détouré obtenu, notamment au niveau des cheveux ou des parties fines du corps.
+
+\subsection{Version V3 : pipeline principal et évaluation des résultats}
+La version \texttt{V3} correspond à la version actuellement la plus importante du projet.
+Elle reprend la logique \texttt{NLF + SAM 2}, mais elle y ajoute un travail plus systématique sur l'analyse des résultats et sur les métriques de qualité.
+C'est cette version qu'il convient de prioriser dans le rapport lorsque l'on décrit l'implémentation principale effectivement utilisée dans le projet.
+
+\subsection{Version V4 : exploration de \texttt{SAM 3}}
+La version \texttt{V4} constitue une nouvelle piste de travail encore en cours d'évaluation.
+L'objectif est de tester \texttt{SAM 3} comme approche plus récente pour la segmentation, d'étudier son comportement sur la vidéo principale et d'évaluer s'il peut remplacer ou compléter la stratégie actuelle.
+À ce stade, cette version est à considérer comme une \emph{approche exploratoire}, prometteuse mais non encore stabilisée.
+
+\section{Données et protocole expérimental}
+L'ensemble des expérimentations repose sur une vidéo principale de test utilisée dans les différentes versions du notebook.
+Cette vidéo est découpée en frames individuelles puis traitée par les différents modules du pipeline.
+Dans les versions principales du notebook, la séquence étudiée contient \(1329\) frames, ce qui fournit une base suffisamment longue pour évaluer à la fois la qualité instantanée de la segmentation et sa stabilité temporelle.
+
+Le protocole général adopté au cours du stage peut être résumé comme suit :
+\begin{enumerate}
+    \item charger la vidéo et extraire l'ensemble des frames ;
+    \item appliquer un module d'analyse de pose pour obtenir des informations géométriques sur la personne ;
+    \item utiliser ces informations pour initialiser ou guider une méthode de segmentation vidéo ;
+    \item produire une vidéo détourée sur fond noir ;
+    \item réinsérer la personne détourée sur un nouveau fond ;
+    \item évaluer qualitativement et quantitativement les résultats obtenus.
+\end{enumerate}
+
+Ce protocole a servi de structure commune aux différentes versions du notebook, même si les outils précis employés ont évolué au cours du temps.
+
+\section{Analyse de pose : pistes explorées et choix retenus}
+L'analyse de pose constitue une première brique importante du projet.
+Elle permet de repérer la danseuse dans l'image, de visualiser la structure du corps et, dans certaines configurations, de fournir des informations utilisables pour l'initialisation de la segmentation.
+
+\subsection{Perspectives explorées}
+Au cours du stage, plusieurs pistes ont été envisagées pour cette étape.
+Parmi elles, \texttt{MMPose} a été considéré comme une piste possible pour l'estimation de pose, notamment dans une optique de comparaison avec \texttt{NLF}.
+Toutefois, dans les notebooks effectivement utilisés comme support principal du projet, c'est \texttt{NLF} qui a joué le rôle central pour l'analyse de pose.
+Cette approche a été privilégiée car elle permettait d'obtenir rapidement des joints 2D et 3D exploitables et de les intégrer à la suite du pipeline.
+
+\subsection{Résultats obtenus avec \texttt{NLF}}
+La version \texttt{V1} du notebook a permis de mener une première étude détaillée de \texttt{NLF}.
+Sur la vidéo principale, \(1329\) frames ont été traitées.
+Le notebook indique qu'une personne est détectée sur \(1263\) frames, soit un taux de détection d'environ \(95{,}0\,\%\).
+Le temps moyen d'inférence observé est de \(309{,}7\) ms par frame, correspondant à un débit d'environ \(3{,}23\) images par seconde.
+
+Ces résultats ont montré que \texttt{NLF} constitue un bon outil d'analyse de pose pour obtenir une compréhension grossière du mouvement de la danseuse au cours du temps.
+Les visualisations produites dans le notebook permettent notamment d'observer :
+\begin{itemize}
+    \item un overlay 2D des joints sur une frame ;
+    \item une mosaïque de plusieurs frames annotées ;
+    \item l'évolution temporelle de la coordonnée \(Z\) d'un joint ;
+    \item une visualisation 3D de la pose estimée.
+\end{itemize}
+
+\rapportfigure{nlf_detection_2d_v1.png}{0.40}{Exemple de détection 2D produite par \texttt{NLF} sur une frame de la vidéo principale.}{fig:nlf2d}
+
+\rapportfigure{nlf_mosaique_v1.png}{0.92}{Mosaïque de plusieurs frames annotées par \texttt{NLF}. Cette visualisation permet d'apprécier qualitativement la robustesse du modèle sur différentes postures.}{fig:nlfmosaique}
+
+\rapportfigure{nlf_pose3d_v1.png}{0.58}{Exemple de visualisation 2D/3D de la pose estimée.}{fig:nlf3d}
+
+\subsection{Limites de l'analyse de pose}
+Même si \texttt{NLF} fournit des résultats utiles, cette étape présente plusieurs limites.
+D'une part, une estimation de pose correcte ne garantit pas une bonne segmentation : disposer de joints ne suffit pas à reconstruire précisément les contours du corps, notamment pour les cheveux, les vêtements ou les membres partiellement flous.
+D'autre part, la qualité des prédictions peut varier selon la posture, l'occlusion par la barre ou la dynamique du mouvement.
+
+Ainsi, dans notre pipeline, l'analyse de pose n'est pas utilisée comme finalité en soi, mais comme \emph{source d'information auxiliaire} pour guider une méthode de segmentation plus adaptée au détouré précis de la danseuse.
+
+\section{Segmentation vidéo et reconstruction : implémentation principale (V3)}
+La contribution centrale du projet, dans son état actuel, repose sur la combinaison de \texttt{NLF} et de \texttt{SAM 2}.
+L'idée générale est la suivante : on repère d'abord la personne dans certaines frames grâce à \texttt{NLF}, puis on utilise ces informations pour initialiser ou réinitialiser \texttt{SAM 2}, qui propage ensuite les masques sur des segments de la vidéo.
+
+\subsection{Principe général du pipeline}
+Dans la version \texttt{V3}, la vidéo est découpée en frames, puis traitée par \texttt{NLF} afin d'obtenir des joints 2D.
+Ces joints sont ensuite utilisés pour construire des \emph{points d'ancrage} sur certaines frames.
+La vidéo est segmentée par morceaux successifs, chaque morceau étant initialisé à partir d'une frame d'ancrage puis propagé au moyen de \texttt{SAM 2}.
+Les masques binaires obtenus sont enregistrés sur disque, et une vidéo détourée sur fond noir est produite en parallèle.
+
+Cette approche présente deux intérêts principaux :
+\begin{itemize}
+    \item elle sépare clairement le rôle de la pose et celui de la segmentation ;
+    \item elle permet de relancer la segmentation régulièrement afin de limiter les dérives au cours du temps.
+\end{itemize}
+
+\subsection{Résultats de segmentation}
+Dans la version \texttt{V3}, l'inférence \texttt{NLF} est réalisée sur les \(1329\) frames de la séquence.
+Le temps moyen d'inférence indiqué dans le notebook est de \(176{,}8\) ms par frame, soit environ \(5{,}66\) images par seconde.
+Le notebook signale également \(1210\) frames avec personne détectée dans ce cadre expérimental.
+
+Une fois la segmentation effectuée, plusieurs visualisations permettent d'évaluer les résultats :
+\begin{itemize}
+    \item le masque obtenu sur une frame unique avec son overlay ;
+    \item les anomalies de segmentation les plus marquées, détectées par les métriques temporelles ;
+    \item la vidéo détourée produite sur fond noir.
+\end{itemize}
+
+\rapportfigure{sam2_overlay_v3.png}{0.60}{Exemple de masque obtenu sur une frame de la vidéo par le pipeline principal \texttt{V3}. Cette figure reste à exporter depuis le notebook.}{fig:sam2overlay}
+
+\rapportfigure{anomalie_overlay_1_v3.png}{0.58}{Exemple d'anomalie de segmentation détectée automatiquement parmi les frames les plus incohérentes.}{fig:anomalies}
+
+\subsection{Limites qualitatives observées}
+Malgré des résultats globalement encourageants, plusieurs défauts reviennent de manière récurrente.
+Le plus notable concerne les cheveux, qui ne sont pas toujours correctement inclus dans le masque.
+De manière plus générale, les parties fines du corps et certains contours peuvent être mal segmentés, en particulier lorsque la posture est extrême ou lorsqu'une partie du corps est partiellement masquée par la barre.
+
+Le notebook \texttt{V2} mentionnait déjà explicitement deux difficultés majeures :
+\begin{itemize}
+    \item les cheveux de la danseuse ne sont pas toujours correctement inclus dans le découpage ;
+    \item la méthode de replacement sur un nouveau fond est fonctionnelle, mais reste fastidieuse et dépend d'un calcul manuel de points.
+\end{itemize}
+Ces limites restent pertinentes dans l'état actuel du travail.
+
+\section{Réinsertion sur un nouveau fond}
+Une fois la vidéo détourée obtenue, la dernière étape du pipeline consiste à réinsérer la danseuse sur un nouveau fond.
+Dans le notebook, cette étape est réalisée à partir d'une transformation géométrique simple, définie à partir de deux points de référence correspondant à la barre sur la vidéo d'origine et sur l'image de destination.
+
+\subsection{Principe de la réinsertion}
+L'idée est de construire une transformation affine de similarité (rotation, mise à l'échelle, translation) telle que l'axe de la barre dans la vidéo d'origine soit aligné avec l'axe choisi sur l'image de fond.
+Une fois cette transformation calculée, chaque frame détourée peut être reprojetée et composée avec le nouveau fond.
+
+Cette stratégie est suffisante pour produire une première démonstration fonctionnelle du pipeline.
+Elle présente toutefois une limite structurelle : elle repose sur un réglage manuel des points de correspondance et ne s'adapte pas automatiquement à des changements de scène plus complexes.
+
+\subsection{Intérêt et limites}
+L'intérêt principal de cette étape est de montrer que le détouré vidéo produit n'est pas seulement une fin en soi, mais qu'il peut s'inscrire dans une chaîne complète de transformation vidéo.
+Toutefois, la qualité de la réinsertion dépend fortement de la qualité des masques et du bon choix des points de recalage.
+En présence d'erreurs de segmentation ou de décalages géométriques, les artefacts deviennent rapidement visibles.
+
+\rapportfigure{reinsertion_v3.png}{0.70}{Exemple de réinsertion de la danseuse sur un nouveau fond. Cette figure reste à exporter depuis le notebook.}{fig:reinsertion}
+
+\section{Évaluation quantitative des résultats}
+Un aspect important de la version \texttt{V3} du projet est l'effort consacré à l'évaluation quantitative des masques générés.
+Plutôt que de se limiter à une inspection visuelle, plusieurs métriques ont été mises en place pour détecter automatiquement des incohérences ou mesurer la stabilité temporelle du détouré obtenu.
+
+\subsection{Analyse des aires}
+Une première famille de métriques repose sur l'aire des masques.
+Pour chaque frame, on compte le nombre de pixels blancs dans le masque binaire, puis on étudie l'évolution de cette quantité au cours du temps.
+Une variation brutale de l'aire peut traduire un échec de segmentation : disparition partielle du corps, perte des cheveux, ou au contraire inclusion intempestive d'une partie du fond.
+
+\rapportfigure{aires_v3.png}{0.92}{Évolution temporelle des aires des masques et dérivée seconde associée. Cette figure reste à exporter depuis le notebook.}{fig:aires}
+
+\subsection{Distance de Bhattacharyya}
+Une deuxième famille de métriques repose sur la comparaison d'histogrammes projetés des masques successifs.
+Le notebook utilise une distance de Bhattacharyya calculée à partir des projections suivant les axes horizontal et vertical.
+Cette approche vise à mesurer la dissimilarité entre deux masques consécutifs ou entre un masque et une combinaison de ses voisins.
+
+Sur la version principale du notebook, la méthode sans overlay fournit une distance moyenne entre frames d'environ \(0{,}177\), soit un score de stabilité de \(82{,}29\,\%\).
+Avec overlay des masques voisins, la distance moyenne tombe à environ \(0{,}156\), ce qui correspond à un score de stabilité de \(84{,}41\,\%\).
+Ces résultats suggèrent que l'agrégation locale des masques voisins améliore légèrement la stabilité mesurée.
+
+\rapportfigure{bhattacharyya_simple_v3.png}{0.92}{Distribution et évolution temporelle de la distance de Bhattacharyya sans overlay.}{fig:bhatta_simple}
+
+\rapportfigure{bhattacharyya_overlay_v3.png}{0.92}{Distribution et évolution temporelle de la distance de Bhattacharyya avec overlay de masques voisins.}{fig:bhatta_overlay}
+
+\subsection{Matrices de confusion}
+Le notebook introduit également une comparaison avec des annotations frame par frame.
+Deux types d'évaluation sont distingués :
+\begin{itemize}
+    \item une évaluation directe de l'état ``BUG / OK'' sur chaque frame ;
+    \item une évaluation des \emph{changements d'état}, c'est-à-dire de la capacité de la métrique à détecter les transitions entre phases stables et phases dégradées.
+\end{itemize}
+
+Pour l'évaluation directe sans overlay, les résultats rapportés dans le notebook sont les suivants :
+\begin{center}
+\begin{tabular}{lccc}
+\toprule
+Classe & Précision & Rappel & F1-score \\
+\midrule
+BUG (0) & 0.38 & 0.15 & 0.22 \\
+OK (1)  & 0.62 & 0.85 & 0.72 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Avec overlay, on obtient :
+\begin{center}
+\begin{tabular}{lccc}
+\toprule
+Classe & Précision & Rappel & F1-score \\
+\midrule
+BUG (0) & 0.38 & 0.11 & 0.17 \\
+OK (1)  & 0.62 & 0.90 & 0.73 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Ces résultats montrent que la méthode détecte plus facilement les zones stables que les erreurs.
+Autrement dit, elle est assez performante pour confirmer qu'une séquence est cohérente, mais plus limitée pour identifier de façon fiable toutes les frames réellement problématiques.
+
+\rapportfigure{confusion_etat_sans_overlay_v3.png}{0.70}{Matrice de confusion associée à la détection des frames correctes et incorrectes, sans overlay.}{fig:confusion-etat}
+
+Pour l'évaluation des changements d'état, le notebook fournit les résultats suivants.
+
+Sans overlay :
+\begin{center}
+\begin{tabular}{lccc}
+\toprule
+Classe & Précision & Rappel & F1-score \\
+\midrule
+STABLE (0) & 0.94 & 0.86 & 0.90 \\
+CHANGEMENT (1) & 0.13 & 0.28 & 0.17 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Avec overlay :
+\begin{center}
+\begin{tabular}{lccc}
+\toprule
+Classe & Précision & Rappel & F1-score \\
+\midrule
+STABLE (0) & 0.93 & 0.90 & 0.92 \\
+CHANGEMENT (1) & 0.10 & 0.15 & 0.12 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Là encore, on retrouve une asymétrie importante entre la détection des états stables et celle des changements.
+Cette observation est intéressante : elle indique que la métrique pourrait être utile comme indicateur global de stabilité, mais qu'elle ne suffit pas, à elle seule, pour caractériser précisément toutes les erreurs de segmentation.
+
+\rapportfigure{confusion_changements_sans_overlay_v3.png}{0.70}{Matrice de confusion associée à la détection des changements d'état, sans overlay.}{fig:confusion-changement}
+
+\section{Discussion}
+Le travail réalisé met en évidence plusieurs enseignements.
+
+Tout d'abord, l'analyse de pose et la segmentation répondent à des besoins différents mais complémentaires.
+L'analyse de pose permet de structurer la scène et de localiser approximativement la danseuse, tandis que la segmentation fournit l'information précise nécessaire à la production d'une vidéo détourée exploitable.
+Dans notre pipeline, la combinaison \texttt{NLF + SAM 2} constitue ainsi un compromis fonctionnel entre robustesse, disponibilité des outils et intégration pratique dans Colab.
+
+Ensuite, la mise en place de métriques d'évaluation s'est révélée essentielle.
+Sans elles, l'analyse du pipeline resterait limitée à des impressions visuelles.
+Même imparfaites, les métriques basées sur l'aire, les histogrammes et les matrices de confusion permettent d'objectiver certaines faiblesses du système et d'identifier des frames à inspecter en priorité.
+
+Enfin, le projet met aussi en évidence la difficulté d'obtenir une segmentation réellement robuste dans un contexte de danse.
+Les positions extrêmes, les auto-occlusions, la finesse des cheveux et la nécessité de conserver une cohérence temporelle rendent le problème plus difficile qu'une simple segmentation d'objet sur image fixe.
+
+\section{Vers une nouvelle approche : piste \texttt{SAM 3}}
+La version \texttt{V4} du notebook introduit une nouvelle direction de recherche : le test de \texttt{SAM 3}.
+L'idée générale est de s'affranchir progressivement d'une partie de la logique actuelle fondée sur \texttt{NLF} et \texttt{SAM 2}, en exploitant un outil plus récent pour la segmentation à partir de prompts textuels et pour la propagation vidéo.
+
+Dans l'état actuel du projet, cette piste doit être présentée comme une \emph{approche en cours de test}.
+Le notebook \texttt{V4} montre qu'une calibration sur image a été mise en place afin de sélectionner un prompt pertinent, puis qu'un predictor vidéo a été préparé pour l'exécution sur la séquence.
+Toutefois, cette branche de développement n'est pas encore suffisamment stabilisée pour remplacer l'implémentation principale dans le rapport.
+Elle doit plutôt être considérée comme une perspective concrète de poursuite du travail.
+
+\rapportfigure{sam3_prompt_v4.png}{0.52}{Exemple de calibration d'un prompt texte dans la version exploratoire \texttt{V4} basée sur \texttt{SAM 3}.}{fig:sam3}
+
+\section{Conclusion et perspectives}
+Au terme de ce TER, nous avons mis en place une chaîne de traitement fonctionnelle permettant d'analyser une vidéo de danse, d'isoler la danseuse présente dans la scène, puis de la réinsérer sur un nouveau fond.
+Le travail réalisé montre qu'une telle tâche ne peut pas être réduite à une simple étape de segmentation : elle nécessite au contraire de combiner plusieurs briques, de confronter plusieurs outils et d'introduire des métriques capables d'évaluer objectivement la stabilité temporelle du résultat.
+
+La version principale du projet repose aujourd'hui sur la combinaison de \texttt{NLF} pour l'analyse de pose et de \texttt{SAM 2} pour la segmentation vidéo.
+Cette approche fournit des résultats encourageants, mais elle présente encore plusieurs limites, en particulier sur les cheveux, sur certaines poses difficiles et sur la simplicité du recalage géométrique utilisé pour la réinsertion.
+
+Les perspectives de travail sont nombreuses.
+Parmi les plus importantes, on peut citer :
+\begin{itemize}
+    \item l'amélioration de la qualité des masques sur les parties fines du corps ;
+    \item l'enrichissement ou le raffinement des métriques de qualité ;
+    \item l'automatisation plus poussée de la réinsertion sur un nouveau fond ;
+    \item l'exploration approfondie de \texttt{SAM 3} comme alternative ou évolution du pipeline actuel.
+\end{itemize}
+
+Ce rapport constitue une première synthèse du travail réalisé.
+Une version ultérieure pourra être enrichie par l'ajout d'illustrations exportées depuis les notebooks, par une description plus détaillée des choix expérimentaux et par une rédaction finale harmonisée à partir des attentes précises des encadrants.
+
+\end{document}
