@@ -103,22 +103,36 @@ Ce travail a été réalisé dans le cadre de la Double Licence Mathématiques-I
 Il correspond à la matière "Stage MIDL 2" consistant en un travail dirigé de recherche (TER) dans les domaines de l'informatique et/ou des mathématiques.
 Ce rapport fait office de compte-rendu de l'entièreté de notre travail de recherche.
 
-\section{Introduction}
-Ce TER s'incrit dans une démarche plus générale, qui est de déterminer analytiquement la présence de montages par IA, notemment connus sous le nom de deepfakes.
+\section{Introduction (à fusionner avec l'autre)}
+Ce TER s'inscrit dans une démarche plus générale, qui est de déterminer analytiquement la présence de montages par IA, notamment connus sous le nom de deepfakes.
 
-\rapportfigure{deepfake_exemple_1.png}{0.50}{Exemple de deepfake (réinsertion de visage)}{fig:reinsertion}
-\rapportfigure{deepfake_exemple_2.png}{0.50}{Exemple de deepfake (compositions d'élements)}{fig:reinsertion}
+\rapportfigure{deepfake_exemple_1.png}{0.50}{Exemple de deepfake (réinsertion de visage)}{fig:deepfake_exemple_1}
+\rapportfigure{deepfake_exemple_2.png}{0.50}{Exemple de deepfake (compositions d'élements)}{fig:deepfake_exemple_2}
 
 Le deepfake est une technique de manipulation numérique utilisant l'IA pour créer des images, des vidéos ou des audios se voulant le plus proche de la réalité mais totalement factices.
 Ce procédé permet de simuler des actions ou des paroles n'ayant jamais eu lieu, entraînant des risques majeurs de désinformation, d'usurpation d'identité et de manipulation de l'opinion.
 
-L'objectif de ce TER n'est pas de repérer directement les manipulations et de relever les inconstitences prouvant que la vidéo est fausse, mais de s'intéresser à la technique de manipulation de vidéo principale qui est la segmentation vidéo.
+L'objectif de ce TER n'est pas de repérer directement les manipulations et de relever les incohérences prouvant que la vidéo est fausse, mais de s'intéresser à la technique de manipulation de vidéo principale qui est la segmentation vidéo.
 La segmentation vidéo est une méthode de traitement d'image qui consiste à diviser chaque image d'une séquence en plusieurs régions ou segments homogènes. Les critères peuvent être basés sur la forme, la couleur, un mouvement, ou même plus récemment de traquer une personne ou un objet.
 Dans le contexte du deepfake, c'est une sorte de scalpel numérique permettant d'isoler précisément les éléments que l'IA devra modifier ou remplacer. C'est ce pré-traitement qui crée alors l'illusion de réel, puisque les vidéos sans retouches sont systématiquement basées sur la réalité dans les deepfakes les plus réussis.
 
-Nous nous sommes alors intéressés à des vidéos de pole dance dans l'objectif de tracker uniquement le danceur (ou la danceuse). Il s'agit d'une tâche difficile car la segmentation doit comprendre que l'objet à découper ne comprend pas la barre de pole, qui passe périodiquement à l'avant et l'arrière du corps.
+Nous nous sommes alors intéressés à des vidéos de pole dance dans l'objectif de tracker uniquement le danseur (ou la danceuse). Il s'agit d'une tâche difficile car la segmentation doit comprendre que l'objet à découper ne comprend pas la barre de pole, qui passe périodiquement à l'avant et l'arrière du corps.
 La sélection de vidéo de pole dance est aussi utile car les membres et articulations à la jonction de la barre sont peu mobiles et les résultats des segmentations peuvent impliquer d'autres usages et intérêts dans des domaines comme celui de l'armée (cette extension ne sera pas abordée dans la suite du rapport).
 Nous prendrons le temps de décrire à travers le rapport les nombreux points de difficultés plus en détails.
+
+\section{Introduction (à fusionner avec l'autre)}
+L'objectif général de ce TER est de mettre en place une chaîne de traitement permettant d'analyser une vidéo de danse, d'isoler automatiquement la personne présente dans la scène, puis de la réinsérer sur un nouveau fond de la manière la plus réaliste possible.
+Ce problème mobilise plusieurs thématiques de vision par ordinateur : l'analyse de pose, la segmentation vidéo, la reconstruction d'une vidéo détourée et l'évaluation qualitative et quantitative des résultats obtenus.
+
+Dans notre cas d'étude, la vidéo principale utilisée comme support expérimental est une vidéo de pole dance.
+Ce choix rend le problème particulièrement intéressant : les mouvements sont amples, les poses sont souvent atypiques, certaines parties du corps peuvent être partiellement occultées par la barre, et la segmentation doit rester cohérente d'une frame à l'autre malgré les changements rapides de position.
+En pratique, l'objectif n'est donc pas seulement de produire un masque correct sur une image isolée, mais de conserver une cohérence temporelle sur l'ensemble de la séquence.
+
+Au-delà de l'aspect applicatif, ce travail nous a également conduits à comparer plusieurs outils et plusieurs approches.
+Au fil du stage, nous avons ainsi construit plusieurs versions successives d'un notebook Google Colab, chacune correspondant à un état d'avancement du pipeline.
+La version \texttt{V1} se concentre principalement sur l'étude de \texttt{NLF}, la version \texttt{V2} introduit \texttt{SAM 2} pour la segmentation, la version \texttt{V3} ajoute une réflexion plus poussée sur l'évaluation qualitative des masques et de la reconstruction vidéo, et la version \texttt{V4} constitue une tentative d'évolution vers \texttt{SAM 3}.
+
+\newpage
 
 \section{Problématique et objectifs}
 Le problème étudié peut être résumé de la manière suivante : étant donnée une vidéo contenant une danseuse, comment détourer automatiquement et de manière suffisamment précise pour permettre une réinsertion convaincante sur un nouveau fond ?
@@ -131,26 +145,28 @@ Cette formulation, simple en apparence, recouvre en réalité plusieurs sous-pro
 \end{itemize}
 
 Le premier enjeu réside dans l'arbitrage entre la performance du résultat et le coût computationnel des outils d'analyse de pose.
-En effet l'enjeu est à la fois technique : réaliser la jonction entre différents outils déjà existant (nous étudierons notamment \texttt{MMPose}, \texttt{NLF} et différentes versions de Segment Anything aussi dit \texttt{SAM}) ; mais aussi méthodologique : quels enchainement d'outils permettent le meilleur ratio temps/performence ?
+En effet l'enjeu est à la fois technique : réaliser la jonction entre différents outils déjà existants (nous étudierons notamment \texttt{MMPose}, \texttt{NLF} et différentes versions de Segment Anything aussi dit \texttt{SAM}) ; mais aussi méthodologique : quels enchaînement d'outils permettent le meilleur ratio temps/performance ?
 
-Le second point est la stratégie d'utilisations de ces outils pour créer une segmentation fiable et consistante de la vidéo originale. Ce critère est en phase avec la méthodologie, de mauvaises performences ou la découverte de nouveau outils reconduisent à la première tâche.
+Le second point est la stratégie d'utilisation de ces outils pour créer une segmentation fiable et cohérente de la vidéo originale. Ce critère est en phase avec la méthodologie, de mauvaises performances ou la découverte de nouveau outils reconduisent à la première tâche.
 Il est alors primordial de trouver les meilleurs compromis pour extraire les meilleurs calques.
 
 Enfin, la réinsertion finale et son évaluation constituent l'aboutissement de la pipeline. La difficulté est ici de mesurer l'efficacité du détourage non seulement par la précision du masque, mais aussi par la fluidité de l'intégration sur le nouveau fond.
 L'oeil humain doit à l'issue de la réinsertion être idéalement dupé, la nouvelle vidéo se doit d'être convaincante.
 Il est alors possible d'extraire des données de cette reconstruction afin de la catégoriser d'un score (par exemple). Ce dernier sera aussi un enjeu de ce TER. 
 
+\newpage
+
 \section{Évolution du travail et présentation des versions}
-Nous avons choisi d'utiliser principalement les infrastructures de google colab, pour leur persistence selon les divers supports, étant donné que le matériel est uniquement géré par google.
+Nous avons choisi de réaliser nos notebooks sur Google Colab, car ils permettent une execution identique, peu importe la machine utilisée (via le cloud).
 Notre travail pourra alors être facilement réutilisé, complété et amélioré par d'autres chercheurs et stagiaires. 
 
 Le travail réalisé s'est structuré autour de quatre versions principales d'un notebook Google Colab.
 Ces notebooks ne correspondent pas simplement à des copies successives d'un même code : ils reflètent une évolution progressive de la méthodologie et de la manière d'aborder le problème, comme explicité dans l'introduction.
-Ces versions représentent une amélioration notable et en rupture par rapport à leur précédente.
+Chaque version représente une amélioration notable et en rupture par rapport à leur précédente.
 
 \subsection{Version V1 : étude de \texttt{NLF}}
-La première version du notebook est centrée sur l'étude de \texttt{NLF} par rapport à \texttt{MMPose}.
-Ces deux outils réalisent les mêmes objectifs, trouver les points d'un squelette sur des silhouttes animales, humains, ou de mains. Ici seulement les modèles sur les humains nous intéressent.
+La première version du notebook est centrée une étude comparative de \texttt{NLF} par rapport à \texttt{MMPose}.
+Ces deux outils réalisent les mêmes objectifs : trouver les points d'un squelette sur des silhouttes animales, humaines, ou de mains. Ici seulement les modèles sur les humains nous intéressent.
 L'étude de \texttt{MMPose} ayant été rapidement écarté, il ne reste plus de mention dans ce rapport, étant donné la fiabilité de \texttt{NLF}.
 
 L'objectif principal est donc d'évaluer la capacité du modèle de \texttt{NLF} à détecter la personne présente dans la vidéo et à fournir une estimation de pose 2D/3D exploitable.
@@ -164,15 +180,17 @@ Elle introduit également les premières réflexions sur la réinsertion et sur 
 
 \subsection{Version V3 : pipeline principal et évaluation des résultats}
 La version \texttt{V3} correspond à la version la plus aboutie utilisant les outils \texttt{NLF} et \texttt{SAM 2}.
-Elle reprend la logique de la \texttt{V2}, mais elle y ajoute un travail plus systématique sur l'analyse des résultats et sur les métriques de qualité, en plus d'une possibilité de tester n'importe quelle vidéo hors du dataset d'origine.
+Elle reprend la logique de la \texttt{V2}, mais elle y ajoute un travail plus systématique sur l'analyse des résultats par la de recherche de métriques justifiant la qualité de reconstruction vidéo, en plus d'une possibilité de tester n'importe quelle vidéo hors du dataset d'origine.
 C'est sur cette version dont le rapport s'appuie le plus, et comme base des différentes implémentations proposées dans le projet.
 
 \subsection{Version V4 : exploration de \texttt{SAM 3}}
 % TODO Quand on aura fini la V4
 La version \texttt{V4} constitue une nouvelle piste de travail encore en cours de création.
-L'objectif est de tester \texttt{SAM 3} comme nouvelle approche pour la segmentation, d'étudier son comportement sur la vidéo principale et d'évaluer s'il peut remplacer ou compléter la stratégie actuelle.
-Cette version de \texttt{SAM} est récente et a été postée durant la création des autres versions, et n'a donc pas été directement incluse dans notre stratégie globale.
+L'objectif est de tester \texttt{SAM 3} comme nouvelle approche pour la segmentation, d'étudier son comportement sur la vidéo principale et d'évaluer s'il peut remplacer ou compléter la stratégie de la \texttt{V3} (\texttt{NLF} et \texttt{SAM 2}).
+Cette version de \texttt{SAM} est récente et a été publiée au cours de notre TER, et n'a donc pas été directement incluse dans notre stratégie globale.
 À ce stade, cette version est à considérer comme une \emph{approche exploratoire}, très prometteuse mais non encore stabilisée.
+
+\newpage
 
 \section{Données et protocole expérimental}
 L'ensemble des expérimentations repose sur une vidéo principale de test utilisée dans les différentes versions du notebook.
@@ -190,6 +208,8 @@ Le protocole général adopté au cours du stage peut être résumé comme suit,
 \end{enumerate}
 
 Ce protocole a servi de structure commune aux différentes versions du notebook, même si les outils précis employés ont évolué au cours du temps.
+
+\newpage
 
 \section{Analyse de pose : pistes explorées et choix retenus}
 L'analyse de pose constitue une première brique importante du projet.
@@ -228,6 +248,8 @@ D'une part, une estimation de pose correcte ne garantit pas une bonne segmentati
 D'autre part, la qualité des prédictions peut varier selon la posture, l'occlusion par la barre ou la dynamique du mouvement.
 
 Ainsi, dans notre pipeline, l'analyse de pose n'est pas utilisée comme finalité en soi, mais comme \emph{source d'information auxiliaire} pour guider une méthode de segmentation plus adaptée au détouré précis de la danseuse.
+
+\newpage
 
 \section{Segmentation vidéo et reconstruction : implémentation principale (V3)}
 La contribution centrale du projet, dans son état actuel, repose sur la combinaison de \texttt{NLF} et de \texttt{SAM 2}.
@@ -273,6 +295,8 @@ Le notebook \texttt{V2} mentionnait déjà explicitement deux difficultés majeu
 \end{itemize}
 Ces limites restent pertinentes dans l'état actuel du travail.
 
+\newpage
+
 \section{Réinsertion sur un nouveau fond}
 Une fois la vidéo détourée obtenue, la dernière étape du pipeline consiste à réinsérer la danseuse sur un nouveau fond.
 Dans le notebook, cette étape est réalisée à partir d'une transformation géométrique simple, définie à partir de deux points de référence correspondant à la barre sur la vidéo d'origine et sur l'image de destination.
@@ -290,6 +314,8 @@ Toutefois, la qualité de la réinsertion dépend fortement de la qualité des m
 En présence d'erreurs de segmentation ou de décalages géométriques, les artefacts deviennent rapidement visibles.
 
 \rapportfigure{reinsertion_v3.png}{0.70}{Exemple de réinsertion de la danseuse sur un nouveau fond. Cette figure reste à exporter depuis le notebook.}{fig:reinsertion}
+
+\newpage
 
 \section{Évaluation quantitative des résultats}
 Un aspect important de la version \texttt{V3} du projet est l'effort consacré à l'évaluation quantitative des masques générés.
@@ -383,6 +409,8 @@ Cette observation est intéressante : elle indique que la métrique pourrait êt
 
 \rapportfigure{confusion_changements_sans_overlay_v3.png}{0.70}{Matrice de confusion associée à la détection des changements d'état, sans overlay.}{fig:confusion-changement}
 
+\newpage
+
 \section{Discussion}
 Le travail réalisé met en évidence plusieurs enseignements.
 
@@ -397,6 +425,8 @@ Même imparfaites, les métriques basées sur l'aire, les histogrammes et les ma
 Enfin, le projet met aussi en évidence la difficulté d'obtenir une segmentation réellement robuste dans un contexte de danse.
 Les positions extrêmes, les auto-occlusions, la finesse des cheveux et la nécessité de conserver une cohérence temporelle rendent le problème plus difficile qu'une simple segmentation d'objet sur image fixe.
 
+\newpage
+
 \section{Vers une nouvelle approche : piste \texttt{SAM 3}}
 La version \texttt{V4} du notebook introduit une nouvelle direction de recherche : le test de \texttt{SAM 3}.
 L'idée générale est de s'affranchir progressivement d'une partie de la logique actuelle fondée sur \texttt{NLF} et \texttt{SAM 2}, en exploitant un outil plus récent pour la segmentation à partir de prompts textuels et pour la propagation vidéo.
@@ -407,6 +437,8 @@ Toutefois, cette branche de développement n'est pas encore suffisamment stabili
 Elle doit plutôt être considérée comme une perspective concrète de poursuite du travail.
 
 \rapportfigure{sam3_prompt_v4.png}{0.52}{Exemple de calibration d'un prompt texte dans la version exploratoire \texttt{V4} basée sur \texttt{SAM 3}.}{fig:sam3}
+
+\newpage
 
 \section{Conclusion et perspectives}
 Au terme de ce TER, nous avons mis en place une chaîne de traitement fonctionnelle permettant d'analyser une vidéo de danse, d'isoler la danseuse présente dans la scène, puis de la réinsérer sur un nouveau fond.
