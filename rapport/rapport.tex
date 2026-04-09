@@ -193,9 +193,11 @@ Cette version de \texttt{SAM} est récente et a été publiée au cours de notre
 \newpage
 
 \section{Données et protocole expérimental}
-L'ensemble des expérimentations repose sur une vidéo principale de test utilisée dans les différentes versions du notebook.
-Cette vidéo est découpée en frames individuelles puis traitée par les différents modules du pipeline.
-La séquence étudiée contient \(1329\) frames et un ensemble de mouvement diversifié avec différentes vitesses, ce qui fournit une base suffisamment longue pour évaluer à la fois la qualité instantanée de la segmentation et sa stabilité temporelle.
+Les données dont nous avons à disposition pour ce TER est un ensemble d'environ 50 vidéos de pole dance.
+Chaque vidéo est préalablement découpée en frames individuelles puis traitée par les différents modules du pipeline.
+
+La majorité de nos expérimentations seront faites sur une vidéo principale, elle est en quelque sorte notre vidéo témoin.
+La séquence étudiée contient $1329$ frames et un ensemble de mouvements diversifié avec différentes vitesses, ce qui fournit une base suffisamment longue pour évaluer à la fois la qualité instantanée de la segmentation et sa stabilité temporelle.
 
 Le protocole général adopté au cours du stage peut être résumé comme suit, toutes ces étapes sont effectivement présentes à partir de la \texttt{V3} :
 \begin{enumerate}
@@ -218,48 +220,58 @@ Elle permet de repérer la danseuse dans l'image, de visualiser la structure du 
 \subsection{Perspectives explorées}
 Au cours du stage, plusieurs pistes ont été envisagées pour cette étape.
 Parmi elles, \texttt{MMPose} a été considéré comme une piste possible pour l'estimation de pose, notamment dans une optique de comparaison avec \texttt{NLF}.
-Toutefois, dans les notebooks effectivement utilisés comme support principal du projet, c'est \texttt{NLF} qui a joué le rôle central pour l'analyse de pose.
-Cette approche a été privilégiée car elle permettait d'obtenir rapidement des joints 2D et 3D exploitables et de les intégrer à la suite du pipeline.
+Toutefois, seulement \texttt{NLF} sera utilisé dans l'ensemble des notebooks pour l'analyse de pose, car plus fiable et plus rapide.
+Cette approche a été privilégiée car elle permettait d'obtenir rapidement des joints (points représentant le squellette de la personne étudiée) 2D et 3D exploitables et de les intégrer à la suite du pipeline.
 
 \subsection{Résultats obtenus avec \texttt{NLF}}
 La version \texttt{V1} du notebook a permis de mener une première étude détaillée de \texttt{NLF}.
-Sur la vidéo principale, \(1329\) frames ont été traitées.
-Le notebook indique qu'une personne est détectée sur \(1263\) frames, soit un taux de détection d'environ \(95{,}0\,\%\).
-Le temps moyen d'inférence observé est de \(309{,}7\) ms par frame, correspondant à un débit d'environ \(3{,}23\) images par seconde.
+Sur la vidéo principale, $1329$ frames ont été traitées.
+Le notebook indique qu'une personne est détectée sur $1263$ frames, soit un taux de détection d'environ $95\%$.
+Le temps moyen d'inférence observé est de $309{,}7$ ms par frame, correspondant à un débit d'environ $3{,}23$ images par seconde.
 
-Ces résultats ont montré que \texttt{NLF} constitue un bon outil d'analyse de pose pour obtenir une compréhension grossière du mouvement de la danseuse au cours du temps.
+Ces résultats ont montré que \texttt{NLF} constitue un bon outil d'analyse de pose pour obtenir une compréhension grossière du mouvement de la danseuse au cours du temps (étant donné que le résultat est un ensemble de points du squelette).
 Les visualisations produites dans le notebook permettent notamment d'observer :
 \begin{itemize}
     \item un overlay 2D des joints sur une frame ;
-    \item une mosaïque de plusieurs frames annotées ;
-    \item l'évolution temporelle de la coordonnée \(Z\) d'un joint ;
-    \item une visualisation 3D de la pose estimée.
-\end{itemize}
-
 \rapportfigure{nlf_detection_2d_v1.png}{0.40}{Exemple de détection 2D produite par \texttt{NLF} sur une frame de la vidéo principale.}{fig:nlf2d}
-
+    \item une mosaïque de plusieurs frames annotées ;
 \rapportfigure{nlf_mosaique_v1.png}{0.92}{Mosaïque de plusieurs frames annotées par \texttt{NLF}. Cette visualisation permet d'apprécier qualitativement la robustesse du modèle sur différentes postures.}{fig:nlfmosaique}
-
+    \item l'évolution temporelle de la coordonnée $Z$ d'un joint ;
+    \item une visualisation 3D de la pose estimée.
 \rapportfigure{nlf_pose3d_v1.png}{0.58}{Exemple de visualisation 2D/3D de la pose estimée.}{fig:nlf3d}
+\end{itemize}
 
 \subsection{Limites de l'analyse de pose}
 Même si \texttt{NLF} fournit des résultats utiles, cette étape présente plusieurs limites.
 D'une part, une estimation de pose correcte ne garantit pas une bonne segmentation : disposer de joints ne suffit pas à reconstruire précisément les contours du corps, notamment pour les cheveux, les vêtements ou les membres partiellement flous.
 D'autre part, la qualité des prédictions peut varier selon la posture, l'occlusion par la barre ou la dynamique du mouvement.
 
-Ainsi, dans notre pipeline, l'analyse de pose n'est pas utilisée comme finalité en soi, mais comme \emph{source d'information auxiliaire} pour guider une méthode de segmentation plus adaptée au détouré précis de la danseuse.
+Ainsi, dans notre pipeline, l'analyse de pose n'est pas utilisée comme finalité en soi, mais comme base d'informations pour guider une méthode de segmentation plus adaptée au détouré précis de la danseuse.
 
 \newpage
 
 \section{Segmentation vidéo et reconstruction : implémentation principale (V3)}
-La contribution centrale du projet, dans son état actuel, repose sur la combinaison de \texttt{NLF} et de \texttt{SAM 2}.
-L'idée générale est la suivante : on repère d'abord la personne dans certaines frames grâce à \texttt{NLF}, puis on utilise ces informations pour initialiser ou réinitialiser \texttt{SAM 2}, qui propage ensuite les masques sur des segments de la vidéo.
+La segmentation vidéo repose sur l'utilisation d'un second outil : \texttt{SAM}. Il permet de détourer des formes, notamment de personnes, sur un flux photo ou vidéo.
+Cet outil prend en entrée un ensemble de points à l'intérieur et à l'exétrieur de la forme désignée, et permet de détourer les contour de la forme. Le résultat obtenu est un calque binaire de la forme trouvée.
+La contribution centrale du projet, dans son état actuel, repose alors sur la combinaison de \texttt{NLF} et de \texttt{SAM 2}.
+% L'idée générale est la suivante : on repère d'abord la personne dans certaines frames grâce à \texttt{NLF}, puis on utilise ces informations pour initialiser ou réinitialiser \texttt{SAM 2}, qui propage ensuite les masques sur des segments de la vidéo.
 
 \subsection{Principe général du pipeline}
-Dans la version \texttt{V3}, la vidéo est découpée en frames, puis traitée par \texttt{NLF} afin d'obtenir des joints 2D.
-Ces joints sont ensuite utilisés pour construire des \emph{points d'ancrage} sur certaines frames.
-La vidéo est segmentée par morceaux successifs, chaque morceau étant initialisé à partir d'une frame d'ancrage puis propagé au moyen de \texttt{SAM 2}.
-Les masques binaires obtenus sont enregistrés sur disque, et une vidéo détourée sur fond noir est produite en parallèle.
+L'outil \texttt{SAM} utilisé seul sur notre vidéo témoin possède des résultats moyennement convaincants.
+La vidéo obtenue en pointant la danceuse sur la première frame manuellement puis en laissant la propagation s'effectuer sur le reste de la vidéo donne des calques clignotants et peu convaincants, à cause en partie des passages à répétition de la danceuse passant devant et derrière la barre de pole faussant la détection.
+On peut assez facilement remarquer que \texttt{SAM} perd le contexte de la forme quand il est lancé seul, il réussit à garder une forme correcte environ une dizaine de secondes.
+
+La sortie de \texttt{NLF}, c'est-à-dire l'ensemble de joints 2D trouvés, nous permet de contourner ce problème : en les confiant à \texttt{SAM} pour qu'il dessine un forme à partir de ceux-ci, les résultats sont plus stables.
+En termes de temps d'exécution, \texttt{NLF} et \texttt{SAM} sont raisonnables, pour \texttt{NLF} il faut environ $200$ms pour $1$ frame ($5$ frames par secondes), donc $4'43''$ sur $1329$ frames pour la vidéo témoin.
+Quant à lui, \texttt{SAM} est 7 fois plus lent environ pour une frame, soit $0{,}6$ frames par seconde. Ménager \texttt{SAM} permet de gagner du temps.
+
+On peut donc considérer la situation comme un curseur qui oscille entre l'usage de \texttt{NLF} et \texttt{SAM} dont les critères sont la qualité des calques et le temps d'exécution.
+La stratégie est d'utiliser périodiquement les deux outils sur des segents de frames définis à l'avance.
+Sous-utiliser \texttt{NLF} rend les calques instables comme dit précédemment, mais le sur-utiliser fait aussi chuter la qualité de la vidéo, car certaines positions où les joints superposent davantage la barre rend un calque combinant la danseuse à la barre.
+De plus \texttt{SAM} réagit moins bien quand la série de frame est trop courte. et \texttt{NLF} a tendance à faire apparaitre la barre quand la segmentation est recalculée.
+Nous avons finalement opté pour un compromis : la vidéo est segmentée par morceaux successifs d'environ 2 secondes, chaque morceau étant initialisé à partir d'une frame d'ancrage puis propagé au moyen de \texttt{SAM 2}.
+Plus le découpage est fin, plus \texttt{NLF} prend aussi plus de temps à se lancer et s'arrêter.
+Au niveau du temps d'éxécution, on est autour de 17 minutes pour $1329$ frames ($0.767$ frames par secondes), la durée pouvant atteindre un peu moins de 20 minutes avec \texttt{SAM} uniquement.
 
 Cette approche présente deux intérêts principaux :
 \begin{itemize}
@@ -268,32 +280,25 @@ Cette approche présente deux intérêts principaux :
 \end{itemize}
 
 \subsection{Résultats de segmentation}
-Dans la version \texttt{V3}, l'inférence \texttt{NLF} est réalisée sur les \(1329\) frames de la séquence.
-Le temps moyen d'inférence indiqué dans le notebook est de \(176{,}8\) ms par frame, soit environ \(5{,}66\) images par seconde.
-Le notebook signale également \(1210\) frames avec personne détectée dans ce cadre expérimental.
+Dans la version \texttt{V3}, l'inférence \texttt{NLF} est réalisée sur les $1329$ frames de la séquence.
+Le temps moyen d'inférence indiqué pour ce cas particulier est de $176{,}8$ ms par frame, soit environ $5{,}66$ images par seconde.
+Le notebook signale également $1210$ frames avec personne détectée dans ce cadre expérimental.
 
 Une fois la segmentation effectuée, plusieurs visualisations permettent d'évaluer les résultats :
 \begin{itemize}
-    \item le masque obtenu sur une frame unique avec son overlay ;
-    \item les anomalies de segmentation les plus marquées, détectées par les métriques temporelles ;
+    \item le masque obtenu sur une frame unique avec son overlay
+\rapportfigure{sam2_overlay_v3.png}{0.60}{Exemple de masque obtenu sur une frame de la vidéo par le pipeline principal \texttt{V3}. Cette figure reste à exporter depuis le notebook.}{fig:sam2overlay}
+    \item les anomalies de segmentation les plus marquées, détectées par les métriques temporelles
+\rapportfigure{anomalie_overlay_1_v3.png}{0.58}{Exemple d'anomalie de segmentation détectée automatiquement parmi les frames les plus incohérentes.}{fig:anomalies}
     \item la vidéo détourée produite sur fond noir.
 \end{itemize}
 
-\rapportfigure{sam2_overlay_v3.png}{0.60}{Exemple de masque obtenu sur une frame de la vidéo par le pipeline principal \texttt{V3}. Cette figure reste à exporter depuis le notebook.}{fig:sam2overlay}
-
-\rapportfigure{anomalie_overlay_1_v3.png}{0.58}{Exemple d'anomalie de segmentation détectée automatiquement parmi les frames les plus incohérentes.}{fig:anomalies}
-
 \subsection{Limites qualitatives observées}
 Malgré des résultats globalement encourageants, plusieurs défauts reviennent de manière récurrente.
-Le plus notable concerne les cheveux, qui ne sont pas toujours correctement inclus dans le masque.
+Le plus notable concerne les cheveux, qui ne sont pas toujours correctement intégrés au masque, du fait qu'ils ne soient pas inclus dans les points de \texttt{NLF} et que leur mouvement est plus rapide que le reste du corps se faisant entrainer dans les mouvements.
 De manière plus générale, les parties fines du corps et certains contours peuvent être mal segmentés, en particulier lorsque la posture est extrême ou lorsqu'une partie du corps est partiellement masquée par la barre.
 
-Le notebook \texttt{V2} mentionnait déjà explicitement deux difficultés majeures :
-\begin{itemize}
-    \item les cheveux de la danseuse ne sont pas toujours correctement inclus dans le découpage ;
-    \item la méthode de replacement sur un nouveau fond est fonctionnelle, mais reste fastidieuse et dépend d'un calcul manuel de points.
-\end{itemize}
-Ces limites restent pertinentes dans l'état actuel du travail.
+Il aurait pu être envisager de combiner dans la stratégie les frames de transitions entre les deux outils, permettant peut-être de trouver le meilleur des deux mondes avec une approche combinatoire. Nous n'avons pas creuser cette piste, les résultats étant déjà satisfaisants.
 
 \newpage
 
@@ -333,8 +338,8 @@ Une deuxième famille de métriques repose sur la comparaison d'histogrammes pro
 Le notebook utilise une distance de Bhattacharyya calculée à partir des projections suivant les axes horizontal et vertical.
 Cette approche vise à mesurer la dissimilarité entre deux masques consécutifs ou entre un masque et une combinaison de ses voisins.
 
-Sur la version principale du notebook, la méthode sans overlay fournit une distance moyenne entre frames d'environ \(0{,}177\), soit un score de stabilité de \(82{,}29\,\%\).
-Avec overlay des masques voisins, la distance moyenne tombe à environ \(0{,}156\), ce qui correspond à un score de stabilité de \(84{,}41\,\%\).
+Sur la version principale du notebook, la méthode sans overlay fournit une distance moyenne entre frames d'environ $0{,}177$, soit un score de stabilité de $82{,}29\,\%$.
+Avec overlay des masques voisins, la distance moyenne tombe à environ $0{,}156$, ce qui correspond à un score de stabilité de $84{,}41\,\%$.
 Ces résultats suggèrent que l'agrégation locale des masques voisins améliore légèrement la stabilité mesurée.
 
 \rapportfigure{bhattacharyya_simple_v3.png}{0.92}{Distribution et évolution temporelle de la distance de Bhattacharyya sans overlay.}{fig:bhatta_simple}

@@ -1,0 +1,29 @@
+\babel@toc {french}{}\relax 
+\contentsline {section}{Préambule}{4}{Doc-Start}%
+\contentsline {section}{\numberline {1}Introduction (à fusionner avec l'autre)}{4}{section.1}%
+\contentsline {section}{\numberline {2}Introduction (à fusionner avec l'autre)}{5}{section.2}%
+\contentsline {section}{\numberline {3}Problématique et objectifs}{6}{section.3}%
+\contentsline {section}{\numberline {4}Évolution du travail et présentation des versions}{7}{section.4}%
+\contentsline {subsection}{\numberline {4.1}Version V1 : étude de \texttt {NLF}}{7}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}Version V2 : intégration de \texttt {SAM 2}}{7}{subsection.4.2}%
+\contentsline {subsection}{\numberline {4.3}Version V3 : pipeline principal et évaluation des résultats}{7}{subsection.4.3}%
+\contentsline {subsection}{\numberline {4.4}Version V4 : exploration de \texttt {SAM 3}}{7}{subsection.4.4}%
+\contentsline {section}{\numberline {5}Données et protocole expérimental}{8}{section.5}%
+\contentsline {section}{\numberline {6}Analyse de pose : pistes explorées et choix retenus}{9}{section.6}%
+\contentsline {subsection}{\numberline {6.1}Perspectives explorées}{9}{subsection.6.1}%
+\contentsline {subsection}{\numberline {6.2}Résultats obtenus avec \texttt {NLF}}{9}{subsection.6.2}%
+\contentsline {subsection}{\numberline {6.3}Limites de l'analyse de pose}{10}{subsection.6.3}%
+\contentsline {section}{\numberline {7}Segmentation vidéo et reconstruction : implémentation principale (V3)}{11}{section.7}%
+\contentsline {subsection}{\numberline {7.1}Principe général du pipeline}{11}{subsection.7.1}%
+\contentsline {subsection}{\numberline {7.2}Résultats de segmentation}{11}{subsection.7.2}%
+\contentsline {subsection}{\numberline {7.3}Limites qualitatives observées}{12}{subsection.7.3}%
+\contentsline {section}{\numberline {8}Réinsertion sur un nouveau fond}{13}{section.8}%
+\contentsline {subsection}{\numberline {8.1}Principe de la réinsertion}{13}{subsection.8.1}%
+\contentsline {subsection}{\numberline {8.2}Intérêt et limites}{13}{subsection.8.2}%
+\contentsline {section}{\numberline {9}Évaluation quantitative des résultats}{14}{section.9}%
+\contentsline {subsection}{\numberline {9.1}Analyse des aires}{14}{subsection.9.1}%
+\contentsline {subsection}{\numberline {9.2}Distance de Bhattacharyya}{14}{subsection.9.2}%
+\contentsline {subsection}{\numberline {9.3}Matrices de confusion}{15}{subsection.9.3}%
+\contentsline {section}{\numberline {10}Discussion}{18}{section.10}%
+\contentsline {section}{\numberline {11}Vers une nouvelle approche : piste \texttt {SAM 3}}{19}{section.11}%
+\contentsline {section}{\numberline {12}Conclusion et perspectives}{20}{section.12}%
