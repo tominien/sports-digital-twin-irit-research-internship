@@ -323,35 +323,72 @@ En présence d'erreurs de segmentation ou de décalages géométriques, les arte
 \newpage
 
 \section{Évaluation quantitative des résultats}
-Un aspect important de la version \texttt{V3} du projet est l'effort consacré à l'évaluation quantitative des masques générés.
+Un aspect important de la version \texttt{V3} du projet est l'analyse consacré à l'évaluation quantitative des masques générés.
 Plutôt que de se limiter à une inspection visuelle, plusieurs métriques ont été mises en place pour détecter automatiquement des incohérences ou mesurer la stabilité temporelle du détouré obtenu.
+
+\subsection{Objectif des analyse}
+L'objectif principal de cette partie est de faire correspondre un calque vidéo (produit des parties précédentes) avec un score de reconstruction.
+Nous avons pensé et discuté plusieurs approches, dont nous pensons que la plus forte prédiction est une combinaison d'indicateurs.
+Chaque indicateur pourrait dans l'idéal permettre d'assurer qu'une frame est mal reconstruite, et le score final serait le ratio de l'ensemble des frames corrompues par rapport à l'ensemble des frames.
+Or nous avons rencontré des problématiques inattendues, qui remettent en question la qualité de nos indicateurs.
+
+Ainsi nous allons regarder les pistes que nous avons explorées, bien qu'un score final n'ait pas été implenté, faute de qualité générale des indicateurs explorés.
 
 \subsection{Analyse des aires}
 Une première famille de métriques repose sur l'aire des masques.
-Pour chaque frame, on compte le nombre de pixels blancs dans le masque binaire, puis on étudie l'évolution de cette quantité au cours du temps.
+Pour chaque frame, on compte le nombre de pixels blancs dans le masque sous forme binaire, puis on étudie l'évolution de cette quantité au cours du temps.
+On s'est intéressée à la variation et l'accélération des aires, qui sont mathématiquement des taux de variations instantannées par rapport aux valeurs adjacentes.
+\begin{align}
+    V_n &= \frac{A_n - A_{n-1}}{\Delta t} \\
+    \gamma_n &= \frac{V_n - V_{n-1}}{\Delta t} = \frac{A_n - 2A_{n-1} + A_{n-2}}{(\Delta t)^2}
+\end{align}
 Une variation brutale de l'aire peut traduire un échec de segmentation : disparition partielle du corps, perte des cheveux, ou au contraire inclusion intempestive d'une partie du fond.
+Les valeurs les plus extrêmes sont souvent des problèmes réels, mais passé ces quelques frames (Moins de $0{,}5\%$) les frames qui ont des variations d'accélération brusques sont souvent correctes.
+Les aires ne sont donc pas très performantes pour déceler les problèmes de manière sûre. 
 
 \rapportfigure{aires_v3.png}{0.92}{Évolution temporelle des aires des masques et dérivée seconde associée. Cette figure reste à exporter depuis le notebook.}{fig:aires}
 
 \subsection{Distance de Bhattacharyya}
-Une deuxième famille de métriques repose sur la comparaison d'histogrammes projetés des masques successifs.
-Le notebook utilise une distance de Bhattacharyya calculée à partir des projections suivant les axes horizontal et vertical.
+Nous avons alors décidé de s'intéresser aux histogrammes des images, pour obtenir une représentation statistique des images, par conséquent différent de l'approche sur les aires.
+
+Cette deuxième famille de métriques repose sur la comparaison d'histogrammes projetés des masques successifs.
+Nous avons associé ces histogrammes à la distance de Bhattacharyya (exprimée sous sa forme métrique de Hellinger) calculée à partir des projections suivant les axes horizontal et vertical.
+$H$ représente les histogrammes des images et $\hat{H}$ les histogrammes normalisés.
+\begin{align}
+    % 1. Projections brutes
+    H_{x,n}(i) = \sum_{j} I_n(i, j) \quad &; \quad H_{y,n}(j) = \sum_{i} I_n(i, j) \\
+    \nonumber \\
+    % 2. Définition explicite de la normalisation (Chapeau)
+    \hat{H}_{x,n}(i) = \frac{H_{x,n}(i)}{\sum_{i} H_{x,n}(i)} \quad &; \quad \hat{H}_{y,n}(j) = \frac{H_{y,n}(j)}{\sum_{j} H_{y,n}(j)} \\
+    \nonumber \\
+    % 3. Mesures de similarité
+    Coef_Bhattacharyya(\hat{H}_n, \hat{H}_{n-1}) &= \sum_{k} \sqrt{\hat{H}_n(k) \cdot \hat{H}_{n-1}(k)} \\
+    Distance_Bhattacharyya(\hat{H}_n, \hat{H}_{n-1}) &= \sqrt{1 - BC(\hat{H}_n, \hat{H}_{n-1})}
+\end{align}
 Cette approche vise à mesurer la dissimilarité entre deux masques consécutifs ou entre un masque et une combinaison de ses voisins.
 
-Sur la version principale du notebook, la méthode sans overlay fournit une distance moyenne entre frames d'environ $0{,}177$, soit un score de stabilité de $82{,}29\,\%$.
+Il a été exploré deux méthodes, celle décrite avec les formules ci-dessus, et une autre en appliquant une fenêtre glissante autour de la frame étudiée (sans l'inclure elle-même).
+$H_{y,n}$ est à la place la pondération des images passées et futures autour de la frame d'histogramme $H_{x,n}$. Cela permet de lisser l'histogramme de comparaison et de faire ressortir d'avantage les frames particulièrement dégradées.
+Nous pensions que ce système serait à la fois plus robuste et plus performant, ce qui est discutable sur les deux points.
+On nomme cette méthode "Bhattacharyya avec overlay" dans la suite du rapport.
+
+Appliqué à notre vidéo témoin, cette méthode sans overlay fournit une distance moyenne entre frames d'environ $0{,}177$, soit un score de stabilité de $82{,}29\,\%$.
 Avec overlay des masques voisins, la distance moyenne tombe à environ $0{,}156$, ce qui correspond à un score de stabilité de $84{,}41\,\%$.
-Ces résultats suggèrent que l'agrégation locale des masques voisins améliore légèrement la stabilité mesurée.
+Ces résultats suggèrent que l'agrégation locale des masques voisins améliore légèrement la stabilité mesurée, ou d'un autre point de vue, que l'overlay n'augmente pas significativement le score mesuré.
 
 \rapportfigure{bhattacharyya_simple_v3.png}{0.92}{Distribution et évolution temporelle de la distance de Bhattacharyya sans overlay.}{fig:bhatta_simple}
-
 \rapportfigure{bhattacharyya_overlay_v3.png}{0.92}{Distribution et évolution temporelle de la distance de Bhattacharyya avec overlay de masques voisins.}{fig:bhatta_overlay}
 
 \subsection{Matrices de confusion}
-Le notebook introduit également une comparaison avec des annotations frame par frame.
-Deux types d'évaluation sont distingués :
+Des matrices de confusion ont été aussi générée sur notre vidéo témoin, en comparaison avec une annotation manuelle de l'ensemble des $1329$ frames.
+Cette annotation a été réalisée de manière à punir mêmes les erreurs les moins visibles (parfois se jouant quelques vingtaines de pixels manquants).
+La donnée la plus importante est avant tout la capacité du modèle à repérer les faux positifs (bug effectif + bug repéré), puisque nous voulons idéalement trouver tous les vrai positifs.
+Cela nous permettrait par exemple de procéder à un second passage sur ces frames pour en ajuster la qualité.
+
+Deux types d'évaluation sont à distinguer :
 \begin{itemize}
-    \item une évaluation directe de l'état ``BUG / OK'' sur chaque frame ;
-    \item une évaluation des \emph{changements d'état}, c'est-à-dire de la capacité de la métrique à détecter les transitions entre phases stables et phases dégradées.
+    \item une évaluation directe de l'état ``BUG / OK'' sur chaque frame correspondant à la différence avec l'annotation manuelle
+    \item une évaluation des changements d'état, c'est-à-dire de la capacité de la métrique à détecter les transitions entre phases stables et phases dégradées (transitions Bug->OK et OK->bug)
 \end{itemize}
 
 Pour l'évaluation directe sans overlay, les résultats rapportés dans le notebook sont les suivants :
@@ -378,12 +415,12 @@ OK (1)  & 0.62 & 0.90 & 0.73 \\
 \end{tabular}
 \end{center}
 
-Ces résultats montrent que la méthode détecte plus facilement les zones stables que les erreurs.
+Ces résultats montrent que la méthode détecte plus facilement les zones stables que les erreurs. Ce qui est normal car la majorité des frames sont bonnes.
 Autrement dit, elle est assez performante pour confirmer qu'une séquence est cohérente, mais plus limitée pour identifier de façon fiable toutes les frames réellement problématiques.
 
 \rapportfigure{confusion_etat_sans_overlay_v3.png}{0.70}{Matrice de confusion associée à la détection des frames correctes et incorrectes, sans overlay.}{fig:confusion-etat}
 
-Pour l'évaluation des changements d'état, le notebook fournit les résultats suivants.
+Pour l'évaluation des changements d'état, l'indicateur semble naïvement performant puisque la distance de Bhattacharyya est grande lors des grandes variations des histogrammes.
 
 Sans overlay :
 \begin{center}
@@ -409,11 +446,13 @@ CHANGEMENT (1) & 0.10 & 0.15 & 0.12 \\
 \end{tabular}
 \end{center}
 
-Là encore, on retrouve une asymétrie importante entre la détection des états stables et celle des changements.
-Cette observation est intéressante : elle indique que la métrique pourrait être utile comme indicateur global de stabilité, mais qu'elle ne suffit pas, à elle seule, pour caractériser précisément toutes les erreurs de segmentation.
-
 \rapportfigure{confusion_changements_sans_overlay_v3.png}{0.70}{Matrice de confusion associée à la détection des changements d'état, sans overlay.}{fig:confusion-changement}
 
+On remarque alors que les frames de variations ne sont pas particulièrement bien détectées. On peut expliquer ça parce que les variations minimes ont été punies lors de l'annotation manuelle, qui sont donc dures à repérer depuis les histogrammes.
+On retrouve une asymétrie importante entre la détection des états stables et celle des changements, car les frames marquée BUG sont souvent adjacentes.
+Il y a encore moins de frames notées BUG dans ces matrices de corrélation pour cette raison.
+
+La conclusion logique pour cette métrique est assez décalée par rapport à la réalité terrain et ne représente pas la bonne stabilité. Son score même si proche de la réalité, est davantage de l'ordre de la coincidence que de la performence de la segmentation.
 \newpage
 
 \section{Discussion}
