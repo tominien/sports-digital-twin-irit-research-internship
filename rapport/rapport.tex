@@ -279,9 +279,9 @@ Le notebook signale également $1210$ frames avec personne détectée dans ce ca
 Une fois la segmentation effectuée, plusieurs visualisations permettent d'évaluer les résultats :
 \begin{itemize}
     \item le masque obtenu sur une frame unique avec son overlay
-\rapportfigure{sam2_overlay_v3.png}{0.60}{Exemple de masque obtenu sur une frame de la vidéo par le pipeline principal \texttt{V3}. Cette figure reste à exporter depuis le notebook.}{fig:sam2overlay}
+\rapportfigure{sam2_overlay_v3.png}{0.7}{Exemple de masque obtenu sur une frame de la vidéo par le pipeline principal \texttt{V3}.}{fig:sam2overlay}
     \item les anomalies de segmentation les plus marquées, détectées par les métriques temporelles
-\rapportfigure{anomalie_overlay_1_v3.png}{0.58}{Exemple d'anomalie de segmentation détectée automatiquement parmi les frames les plus incohérentes.}{fig:anomalies}
+\rapportfigure{anomalie_overlay_1_v3.png}{0.7}{Exemple d'anomalie de segmentation détectée automatiquement parmi les frames les plus incohérentes.}{fig:anomalies}
     \item la vidéo détourée produite sur fond noir.
 \end{itemize}
 
@@ -310,7 +310,7 @@ L'intérêt principal de cette étape est de montrer que le détouré vidéo pro
 Toutefois, la qualité de la réinsertion dépend fortement de la qualité des masques et du bon choix des points de recalage.
 En présence d'erreurs de segmentation ou de décalages géométriques, les artefacts deviennent rapidement visibles.
 
-\rapportfigure{reinsertion_v3.png}{0.70}{Exemple de réinsertion de la danseuse sur un nouveau fond. Cette figure reste à exporter depuis le notebook.}{fig:reinsertion}
+\rapportfigure{reinsertion_v3.png}{0.50}{Exemple de réinsertion de la danseuse sur un nouveau fond.}{fig:reinsertion}
 
 \newpage
 
@@ -336,9 +336,17 @@ On s'est intéressée à la variation et l'accélération des aires, qui sont ma
 \end{align}
 Une variation brutale de l'aire peut traduire un échec de segmentation : disparition partielle du corps, perte des cheveux, ou au contraire inclusion intempestive d'une partie du fond.
 Les valeurs les plus extrêmes sont souvent des problèmes réels, mais passé ces quelques frames (Moins de $0{,}5\%$) les frames qui ont des variations d'accélération brusques sont souvent correctes.
-Les aires ne sont donc pas très performantes pour déceler les problèmes de manière sûre. 
+Il est à noter que si la caméra bouge au fil de la vidéo, l'indicateur sur les aires sera très sensible et probablement inutilisable étant donné que le/la danceur couvera plus ou moins de pixels en fonction du déplacement. Dans cette optique nos vidéos ont des caméras qui sont fixées le long des vidéos.
 
-\rapportfigure{aires_v3.png}{0.92}{Évolution temporelle des aires des masques et dérivée seconde associée. Cette figure reste à exporter depuis le notebook.}{fig:aires}
+De plus, pour décider si une frame est "bonne" ou "mauvaise" nous utilisons un seuil sur l'accélaration qui est adaptatif à la vidéo. Il utilise la moyenne des aires pour choisir.
+Nous avons réglé à $10\%$ par défaut ce seuil : ce qui veut dire que si l'accélaration sur les aires d'une frame augmente brutalement par rapport à cette moyenne, la frame est una anomalie.
+Procéder d'une telle manière est assez risqué, on pourrait imaginer des vidéos qui faussent intentionnellement la détection avec une moyenne petite mais avec une grande étendue sur les valeurs sur une longue vidéo pour lisser le tout.
+Symétriquement, une vidéo parfaite peut avoir une détection de mauvaises frames à cause des mouvements non constants.
+
+Les aires ne sont donc pas très performantes pour déceler les problèmes de manière sûre, et sont en particuleir sensibles à la vitesse du déplacement, l'angle de caméra (en particulier si la caméra est proche ou loin), et de la proportion choisie pour le seuil.
+
+\rapportfigure{aires_v3.png}{0.7}{Évolution temporelle des aires des masques et dérivée seconde associée.}{fig:aires_graphique}
+\rapportfigure{frame_aires_faux_positif.png}{0.5}{Exemple de frame correcte mais où un bug est détecté sur les frames 484 (gauche) et 486 (droite), c'est un faux positif (la danceuse a la tête en arrière, il est normal qu'elle ne soit pas visible)}{fig:aires_frame_fp}
 
 \subsection{Distance de Bhattacharyya}
 Nous avons alors décidé de s'intéresser aux histogrammes des images, pour obtenir une représentation statistique des images, par conséquent différent de l'approche sur les aires.
