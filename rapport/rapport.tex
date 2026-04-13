@@ -94,7 +94,14 @@ TER L3 MIDL -- Université de Toulouse
 \end{center}
 
 \newpage
+
+\clearpage
+\begingroup
+\small % J'ai mis une police plus petite pour tout faire passer sur une page.
 \tableofcontents
+\endgroup
+\clearpage
+
 \newpage
 
 \section*{Préambule}
@@ -125,6 +132,8 @@ L'objectif est donc de produire un masque correct sur une vidéo complète, et d
 
 La sélection de vidéo de pole dance est aussi utile car les membres et articulations à la jonction de la barre sont peu mobiles et peuvent être appliqués à d'autres usages dans le domaine de l'armée (non abordé dans la suite du rapport).
 Nous prendrons le temps de décrire à travers le rapport les nombreux points de difficultés plus en détails.
+
+\newpage
 
 \section{Problématique et objectifs}
 Le problème étudié peut être résumé de la manière suivante : étant donnée une vidéo contenant une danseuse, comment détourer automatiquement et de manière suffisamment précise pour permettre une réinsertion convaincante sur un nouveau fond ?
@@ -331,7 +340,9 @@ Une première famille de métriques repose sur l'aire des masques.
 Pour chaque frame, on compte le nombre de pixels blancs dans le masque sous forme binaire, puis on étudie l'évolution de cette quantité au cours du temps.
 On s'est intéressée à la variation et l'accélération des aires, qui sont mathématiquement des taux de variations instantannées par rapport aux valeurs adjacentes.
 \begin{align}
-    V_n &= \frac{A_n - A_{n-1}}{\Delta t} \\
+    V_n &= \frac{A_n - A_{n-1}}{\Delta t}
+\end{align}
+\begin{align}
     \gamma_n &= \frac{V_n - V_{n-1}}{\Delta t} = \frac{A_n - 2A_{n-1} + A_{n-2}}{(\Delta t)^2}
 \end{align}
 Une variation brutale de l'aire peut traduire un échec de segmentation : disparition partielle du corps, perte des cheveux, ou au contraire inclusion intempestive d'une partie du fond.
@@ -355,16 +366,17 @@ Cette deuxième famille de métriques repose sur la comparaison d'histogrammes p
 Nous avons associé ces histogrammes à la distance de Bhattacharyya (exprimée sous sa forme métrique de Hellinger) calculée à partir des projections suivant les axes horizontal et vertical.
 $H$ représente les histogrammes des images et $\hat{H}$ les histogrammes normalisés.
 \setcounter{equation}{0}
-\begin{align}
-    % 1. Projections brutes
-    H_{x,n}(i) = \sum_{j} I_n(i, j) \quad &; \quad H_{y,n}(j) = \sum_{i} I_n(i, j) \\
-    \nonumber \\
-    % 2. Définition explicite de la normalisation (Chapeau)
-    \hat{H}_{x,n}(i) = \frac{H_{x,n}(i)}{\sum_{i} H_{x,n}(i)} \quad &; \quad \hat{H}_{y,n}(j) = \frac{H_{y,n}(j)}{\sum_{j} H_{y,n}(j)} \\
-    \nonumber \\
-    % 3. Mesures de similarité
-    Coef_Bhattacharyya(\hat{H}_n, \hat{H}_{n-1}) &= \sum_{k} \sqrt{\hat{H}_n(k) \cdot \hat{H}_{n-1}(k)} \\
-    Distance_Bhattacharyya(\hat{H}_n, \hat{H}_{n-1}) &= \sqrt{1 - BC(\hat{H}_n, \hat{H}_{n-1})}
+\begin{align} % 1. Projections brutes :
+    H_{x,n}(i) = \sum_{j} I_n(i, j) \quad \text{et} \quad H_{y,n}(j) = \sum_{i} I_n(i, j)
+\end{align}
+\begin{align} % 2. Définition explicite de la normalisation (Chapeau) :
+    \hat{H}_{x,n}(i) = \frac{H_{x,n}(i)}{\sum_{i} H_{x,n}(i)} \quad \text{et} \quad \hat{H}_{y,n}(j) = \frac{H_{y,n}(j)}{\sum_{j} H_{y,n}(j)}
+\end{align}
+\begin{align} % 3. Mesures de similarité :
+    Coef_{Bhattacharyya}(\hat{H}_n, \hat{H}_{n-1}) &= \sum_{k} \sqrt{\hat{H}_n(k) \cdot \hat{H}_{n-1}(k)}
+\end{align}
+\begin{align} % 4. Distance de Hellinger (métrique) :
+    Distance_{Bhattacharyya}(\hat{H}_n, \hat{H}_{n-1}) &= \sqrt{1 - BC(\hat{H}_n, \hat{H}_{n-1})}
 \end{align}
 Cette approche vise à mesurer la dissimilarité entre deux masques consécutifs ou entre un masque et une combinaison de ses voisins.
 
@@ -453,7 +465,56 @@ On remarque alors que les frames de variations ne sont pas particulièrement bie
 On retrouve une asymétrie importante entre la détection des états stables et celle des changements, car les frames marquée BUG sont souvent adjacentes.
 Il y a encore moins de frames notées BUG dans ces matrices de corrélation pour cette raison.
 
-La conclusion logique pour cette métrique est assez décalée par rapport à la réalité terrain et ne représente pas la bonne stabilité. Son score même si proche de la réalité, est davantage de l'ordre de la coincidence que de la performence de la segmentation.
+La conclusion logique pour cette métrique est assez décalée par rapport à la réalité terrain et ne représente pas la bonne stabilité. Son score même si proche de la réalité, est davantage de l'ordre de la coincidence que de la performance de la segmentation.
+
+\subsection{Aidemos / Convert Body To 3D}
+Nous avons également exploré une nouvelle famille de métriques reposant sur l'outil \texttt{Aidemos / Convert Body To 3D}, correspondant au modèle \texttt{SAM 3D Body}. Contrairement aux indicateurs précédents, qui reposent directement sur le masque binaire ou sur ses projections, cette approche cherche à mesurer la cohérence géométrique du corps reconstruit à partir du calque vidéo. L'idée n'est donc plus seulement d'étudier la variation du contour, mais d'analyser la stabilité de la structure corporelle estimée entre deux frames consécutives.
+
+L'intuition de départ est la suivante : si la segmentation reste cohérente au cours du temps, alors le corps reconstruit à partir des calques successifs doit lui aussi évoluer de manière régulière. À l'inverse, si une partie du corps disparaît brutalement, si le masque fusionne avec la barre, ou si le détourage devient instable, on s'attend à observer un saut plus important dans la reconstruction du squelette d'une frame à l'autre.
+
+Concrètement, pour chaque frame retenue, nous reconstruisons d'abord un calque RGB recadré autour de la danseuse à partir de la frame originale et du masque binaire. Ce recadrage est ensuite fourni à \texttt{SAM 3D Body}, qui retourne notamment un ensemble de sommets 3D, des points-clés 3D et leurs projections 2D. La métrique est ensuite calculée non pas sur une frame isolée, mais sur des transitions consécutives $t \rightarrow t+1$ appartenant à un même run d'erreurs.
+
+La grandeur principale retenue est une distance de Procrustes normalisée entre les points-clés 3D reconstruits sur deux frames successives. Si l'on note $K_t = (p_{t,1}, \dots, p_{t,m})$ et $K_{t+1} = (p_{t+1,1}, \dots, p_{t+1,m})$ les ensembles de points-clés 3D valides aux instants $t$ et $t+1$, on cherche à comparer les deux configurations après recentrage et normalisation d'échelle. Le score de variation squelettique 3D peut alors s'écrire sous la forme :
+\begin{align}
+    d_{3D}(t, t+1) = \min_{R,s} \frac{1}{m} \sum_{j=1}^{m} \left\| \tilde{p}_{t,j} - s R \tilde{p}_{t+1,j} \right\|,
+\end{align}
+où $R$ désigne une rotation orthogonale, $s$ un facteur d'échelle, et $\tilde{p}_{t,j}$ les points-clés centrés. Cette distance vise à mesurer un changement de structure ou de posture indépendamment des simples effets de translation ou de changement de taille apparente.
+
+En complément, une distance normalisée en 2D a également été calculée sur les projections des points-clés. Cette quantité n'est pas utilisée comme score principal, mais comme indicateur auxiliaire permettant de vérifier si les variations observées en 3D se retrouvent aussi dans la géométrie projetée de l'image.
+
+Nous avons étudié deux versions de cette métrique. Une première version, dite \og rapide \fg{}, applique directement \texttt{SAM 3D Body} aux runs d'erreurs à analyser, puis calcule les sauts 3D et 2D sur les transitions consécutives de ces runs. Une seconde version, plus longue, ajoute une analyse complémentaire en comparant les transitions issues des runs d'erreurs à un petit ensemble témoin de transitions choisies hors de ces runs. Cette deuxième version est plus coûteuse, mais permet de mieux situer les scores obtenus par rapport à des zones supposées stables de la vidéo.
+
+Sur la vidéo témoin, l'exécution longue appliquée aux transitions jugées anormales par la métrique précédente met en évidence huit runs courts :
+$(349,350)$, $(424,425)$, $(438,439)$, $(549,550)$, $(699,700)$, $(749,750)$, $(799,800)$ et $(1099,1100)$.
+Parmi eux, cinq transitions ont produit un score 3D exploitable, tandis que trois cas n'ont pas permis de reconstruire de squelette complet. Les scores 3D valides observés sont compris approximativement entre $0{,}21$ et $0{,}81$, les valeurs les plus élevées apparaissant notamment autour des transitions $424 \rightarrow 425$ et $549 \rightarrow 550$.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.98\linewidth]{aidemos_scores_simple_long.png}
+    \caption{Évolution des sauts du squelette estimés par \texttt{SAM 3D Body} sur les transitions anormales détectées (gauche) et comparaison entre transitions d'erreur et transitions témoins (droite). Les croix rouges correspondent aux transitions pour lesquelles aucun squelette valide n'a pu être reconstruit.}
+    \label{fig:aidemos_scores}
+\end{figure}
+
+La figure~\ref{fig:aidemos_scores} montre d'une part que certaines transitions se distinguent nettement des autres par un saut 3D important, et d'autre part que les transitions issues des runs d'erreurs présentent globalement des scores plus élevés que le groupe témoin. Sur ce cas expérimental, les scores d'erreur ont une moyenne d'environ $0{,}543$, contre environ $0{,}307$ sur le jeu témoin. La taille d'effet estimée est proche de $1$, ce qui suggère une séparation non négligeable entre les deux groupes. En revanche, toutes les anomalies ne sont pas parfaitement séparées du témoin, ce qui montre que la métrique reste partiellement bruitée et ne permet pas à elle seule une discrimination complète.
+
+Cette observation est cohérente avec la nature même de l'indicateur : il ne mesure pas directement la qualité du contour pixel à pixel, mais la cohérence du corps reconstruit. Il est donc particulièrement sensible aux erreurs qui modifient fortement la géométrie globale du sujet : disparition d'un membre, fusion partielle avec la barre, recadrage incohérent, ou changement brutal de silhouette. À l'inverse, il est moins adapté à la détection de défauts fins de segmentation, comme quelques mèches de cheveux manquantes ou une légère imprécision sur les bords.
+
+La transition $549 \rightarrow 550$, qui correspond au plus grand saut 3D observé dans cette expérience, fournit un bon exemple qualitatif de ce comportement. La figure~\ref{fig:aidemos_transition} montre les deux calques recadrés, ainsi que la reconstruction produite par \texttt{SAM 3D Body} sur chacune des deux frames.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.98\linewidth]{aidemos_transition_549_550.png}
+    \caption{Exemple de transition anormale pour la métrique \texttt{Aidemos / Convert Body To 3D} : comparaison des frames $549$ et $550$, avec visualisation des points-clés 2D et de la reconstruction 3D correspondante.}
+    \label{fig:aidemos_transition}
+\end{figure}
+
+Cette seconde figure permet d'illustrer précisément et visuellement le type de situation que la métrique met en évidence (ici le bras droit de la pole danceuse qui change totalement de position de la frame 549 à 550 dû à un mauvais calque à la frame 549).
+Elle permet de relier le score numérique à une variation effective de la reconstruction corporelle entre deux frames successives.
+
+Cette approche présente cependant plusieurs limites. La première est son coût computationnel élevé : le modèle est appliqué image par image, ce qui rend l'analyse complète nettement plus lente que les métriques précédentes. La seconde est qu'il s'agit d'un outil de reconstruction monoculaire sur image unique, détourné ici pour une analyse vidéo ; la stabilité temporelle n'est donc pas imposée par le modèle lui-même, mais reconstruite a posteriori par comparaison de frames successives. Enfin, certains cas difficiles conduisent à l'absence totale de squelette reconstruit, ce qui complique l'interprétation des scores et oblige à distinguer explicitement les transitions réellement mesurées des échecs d'inférence.
+
+En résumé, la métrique basée sur \texttt{Aidemos / Convert Body To 3D} apporte un point de vue complémentaire aux métriques fondées sur l'aire ou sur les histogrammes. Elle ne remplace pas les indicateurs plus simples, mais elle permet de détecter des incohérences d'un autre type, davantage liées à la cohérence corporelle de la danseuse qu'à la seule forme du masque. Dans l'état actuel du projet, nous la considérons donc comme une métrique exploratoire prometteuse, particulièrement intéressante pour analyser des anomalies fortes, mais encore trop coûteuse et trop sensible à l'échec de reconstruction pour constituer à elle seule un score final de qualité vidéo.
+
 \newpage
 
 \section{Discussion}
@@ -470,9 +531,11 @@ Même imparfaites, les métriques basées sur l'aire, les histogrammes et les ma
 Enfin, le projet met aussi en évidence la difficulté d'obtenir une segmentation réellement robuste dans un contexte de danse.
 Les positions extrêmes, les auto-occlusions, la finesse des cheveux et la nécessité de conserver une cohérence temporelle rendent le problème plus difficile qu'une simple segmentation d'objet sur image fixe.
 
+\newpage
+
 \section{Vers une nouvelle approche : \texttt{SAM 3}}
 Nous étudions actuellement la nouvelle version de Segment Anything \texttt{SAM 3} dans le même contexte de segmentation vidéo.
-Elle semble prometteuse en termes de performences et ne nécessessite même plus des joints de \texttt{NLF} comme donnée d'entrée, un prompt permet de détourer automatiquement l'objet étudié.
+Elle semble prometteuse en termes de performances et ne nécessessite même plus des joints de \texttt{NLF} comme donnée d'entrée, un prompt permet de détourer automatiquement l'objet étudié.
 Cette approche sera complétée dans ce rapport lorsque elle sera terminée.
 
 Voilà un aperçu des calques qu'elle peut générer selon plusieurs prompts plus ou moins précis.
