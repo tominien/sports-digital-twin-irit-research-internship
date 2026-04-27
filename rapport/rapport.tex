@@ -296,23 +296,30 @@ Une fois la segmentation effectuée, plusieurs visualisations permettent d'éval
     \item le masque obtenu sur une frame unique avec son overlay
 \rapportfigure{sam2_overlay_v3.png}{0.7}{Exemple de masque obtenu sur une frame de la vidéo par le pipeline principal \texttt{V3}.}{fig:sam2overlay}
     \item les anomalies de segmentation les plus marquées, détectées par les métriques temporelles
-\rapportfigure{anomalie_overlay_1_v3.png}{0.7}{Exemple d'anomalie de segmentation détectée automatiquement parmi les frames les plus incohérentes.}{fig:anomalies}
+\rapportfigure{anomalie_overlay_1_v3.png}{0.7}{Exemple d'anomalie de segmentation détectée automatiquement parmi les frames les plus incohérentes.}{fig:anomaliesv3}
     \item la vidéo détourée produite sur fond noir.
 \end{itemize}
 
 \subsection{Stratégie du pipeline \texttt{SAM 3} (V4)}
-La \texttt{V4} effectue la segmentation vidéo sans analyse de pose préalable et prend comme donnée d'entrée uniquement un prompt texte (celui ayant le meilleur taux de reconstruction parmi une série de prompts entrés).
-\texttt{SAM 3} réalise ensuite une propagation vidéo comme outil de segmentation.
+La \texttt{V4} effectue la segmentation vidéo sans analyse de pose préalable (ex : les joints de \texttt{NLF} comme donnée d'entrée) et prend comme donnée d'entrée uniquement un prompt texte (celui ayant le meilleur taux de reconstruction parmi une série de prompts entrés).
+Ensuite, \texttt{SAM 3} détoure automatiquement l'objet étudié sur toute la vidéo, en procédant blocs par blocs de frames.
 Sur la vidéo témoin, cette approche supprime une grande partie des défauts visibles liés à la perte de contexte périodique de l'utilisation de \texttt{NLF} ou parce que \texttt{SAM 2} est moins évolué.
 La contrepartie de la qualité visuelle se retrouve dans le temps d'exécution, par exemple la vidéo témoin nécessite environ $1$h$30$ pour $1329$ frames.
 
-Nous avons analysé plusieurs prompts différents parmi une sélection de 8 formulations personnalisées qui nous semblaient appropriées. Notre vidéo témoin possède le simple prompt "\texttt{person}" par exemple.
+Nous avons analysé plusieurs prompts différents parmi une sélection de 8 formulations personnalisées qui nous semblaient appropriées ("\texttt{woman doing pole dance}", "\texttt{person near a pole}", etc.). \\
+Par exemple, le meilleur prompt sur notre vidéo témoin est "\texttt{person}".
 La métrique de sélection du meilleur prompt correspond au taux de confiance de \texttt{SAM 3} délivré pour la segmentation de la première frame.
 
 L'exécution complète de la segmentation est ensuite réalisée par morceaux successifs, avec un découpage en blocs de $8$ frames et une propagation vidéo pilotée directement par \texttt{SAM 3}.
 Dans notre configuration Colab actuelle, cette approche demande environ $1$h$30$ d'exécution sur la vidéo principale, soit environ une image toutes les $4$ secondes.
 
-\subsection{???}
+\rapportfigure{sam3_prompt_v4.png}{0.4}{Exemple de calibration d'un prompt texte dans la \texttt{V4} basée sur \texttt{SAM 3}.}{fig:sam3}
+
+
+\subsection{Résultats de segmentation \texttt{SAM 3} (V4)}
+
+...
+\rapportfigure{anomalie_overlay_1_v4.png}{0.7}{...}{fig:anomaliesv4}
 
 \subsection{Limites qualitatives observées}
 Concernant la \texttt{V3}, malgré des résultats globalement encourageants, plusieurs défauts reviennent de manière récurrente.
@@ -542,7 +549,7 @@ En résumé, la métrique basée sur \texttt{Aidemos / Convert Body To 3D} appor
 
 \newpage
 
-\section{Discussion}
+\section{Discussion et perspectives d'amélioration}
 Le travail réalisé met en évidence plusieurs enseignements.
 
 Tout d'abord, l'analyse de pose et la segmentation répondent à des besoins différents mais complémentaires.
@@ -565,49 +572,40 @@ Même imparfaites, les métriques basées sur l'aire, les histogrammes et les ma
 Enfin, le projet met aussi en évidence la difficulté d'obtenir une segmentation réellement robuste dans un contexte de danse.
 Les positions extrêmes, les auto-occlusions, la finesse des cheveux et la nécessité de conserver une cohérence temporelle rendent le problème plus difficile qu'une simple segmentation d'objet sur image fixe.
 
-\newpage
+\vspace{1cm}
 
-\section{Vers une nouvelle approche : \texttt{SAM 3}}
-Nous étudions actuellement la nouvelle version de Segment Anything \texttt{SAM 3} dans le même contexte de segmentation vidéo.
-Elle semble prometteuse en termes de performances et ne nécessessite même plus des joints de \texttt{NLF} comme donnée d'entrée, un prompt permet de détourer automatiquement l'objet étudié.
-Cette approche sera complétée dans ce rapport lorsque elle sera terminée.
-
-Voilà un aperçu des calques qu'elle peut générer selon plusieurs prompts plus ou moins précis.
-
-\rapportfigure{sam3_prompt_v4.png}{0.4}{Exemple de calibration d'un prompt texte dans la version exploratoire \texttt{V4} basée sur \texttt{SAM 3}.}{fig:sam3}
-
-\newpage
-
-\section{Conclusion et perspectives}
-Au terme de ce TER, nous avons mis en place une chaîne de traitement fonctionnelle permettant d'analyser une vidéo de pole danse, d'isoler la danseuse présente dans la scène, puis de la réinsérer sur un nouveau fond.
-Nous avons exploré plusieurs stratégies, et constaté que lorsque les outils de génération ou même d'analyse ne fonctionnent pas comme prévus, l'intérêt de notre tâche est de savoir tirer le meilleur parti d'eux, avec plus ou moins de succès.
-La version principale du projet repose aujourd'hui sur la combinaison de \texttt{NLF} pour l'analyse de pose et de \texttt{SAM 2} pour la segmentation vidéo.
-Cette approche fournit des résultats encourageants mais imparfaits, mais elle présente encore plusieurs limites qui résultent souvent par une oscillation visuelle de la danseuse avec les autres objets ou l'arrière plan. A cause de la vitesse ou des poses difficiles.
-
-Les perspectives de travail sont nombreuses.
+Les perspectives d'amélioration sont nombreuses.
 Parmi les plus importantes, on peut citer :
 \begin{itemize}
-    \item l'amélioration de la qualité des masques en améliorant les outils déjà existants ou en explorant de nouveaux (étudié avec la \texttt{V4}).
-    \item l'enrichissement et le raffinement des métriques de qualité.
-    \item l'automatisation plus poussée de la réinsertion sur un nouveau fond.
+    \item L'optimisation de la \texttt{V4}, afin de bénéficier de la qualité de \texttt{SAM 3} avec un coût d'exécution plus raisonnable,
+    \item L'enrichissement et le raffinement des métriques de qualité,
+    \item L'automatisation plus poussée de la réinsertion sur un nouveau fond.
 \end{itemize}
 
+\newpage
 
-
-Au terme de ce TER, nous avons mis en place deux chaînes de traitement exploitables pour la segmentation vidéo de pole dance.
+\section{Conclusion}
+Au terme de ce TER, nous avons mis en place deux chaînes de traitement fonctionnelles permettant d'analyser des vidéos de pole danse :
 \begin{itemize}
-    \item Le premier pipeline (\texttt{V3}) constitue une démarche qualitative dans l'ensemble avec un temps d'exécution relativement court. Il est particulièrement adapté aux expérimentations rapides et à l'étude des métriques d'estimation de qualité de reconstruction vidéo.
-    \item Le second pipeline (\texttt{V4}) rend des résultats proches de la perfection très convaincants, avec une contrepartie élevée dans le coût temporel (environ 4 à 5 fois plus long que la \texttt{V3}).
+    \item En estimant puis segmentant la position du danseur présent dans la scène,
+    \item En le réinsérant sur un nouveau fond,
+    \item Et en évaluant quantitativement la qualité de la segmentation vidéo obtenue.
 \end{itemize}
 
-La \texttt{V3} reste donc une bonne base méthodologique pour l'évaluation quantitative et l'exploration rapide de plusieurs vidéos, tandis que la \texttt{V4} apparaît comme une alternative de meilleure qualité visuelle pour la segmentation elle-même.
-Les deux approches doivent à ce stade être vues comme complémentaires plutôt que concurrentes : la \texttt{V3} est plus économique et plus flexible, la \texttt{V4} plus coûteuse mais plus performante qualitativement.
-
-Différentes perspectives d'améliorations :
+Au terme de ce TER, nous avons mis en place deux chaînes de traitement exploitables pour la segmentation vidéo de pole dance :
 \begin{itemize}
-    \item l'optimisation de la \texttt{V4}, afin de bénéficier de la qualité de \texttt{SAM 3} avec un coût d'exécution plus raisonnable,
-    \item l'enrichissement et le raffinement des métriques de qualité,
-    \item l'automatisation plus poussée de la réinsertion sur un nouveau fond.
+    \item Le premier pipeline (\texttt{V3}), composé de \texttt{NLF} + \texttt{SAM 2}, constitue une démarche qualitative dans l'ensemble avec un temps d'exécution relativement court.
+    \begin{itemize}
+        \item Cette approche est satisfaisante bien que les résultats ont des légers manques, que l'oeil humain remarque facilement (oscillations, pertes ponctuelles de membres), ce pipeline est alors difficilement utilisable dans le contexte de deepfakes, mais présente tout de même une bonne stabilité pour obtenir un aperçu en peu de temps.
+        \item La \texttt{V3} est donc particulièrement adapté aux expérimentations rapides et à l'étude des métriques d'estimation de qualité de reconstruction vidéo et reste donc une bonne base méthodologique pour une exploration rapide sur plusieurs vidéos.
+    \end{itemize}
+    \item Le second pipeline (\texttt{V4}), composé de \texttt{SAM 3}, produit un rendu globalement bien plus qualitatif que la \texttt{V3}, au prix d'une exécution plus longue.
+    \begin{itemize}
+        \item Cette approche rend des résultats très convaincants, parfois proches de la perfection, pouvant tromper un oeil non-averti, ce qui la rend adaptée dans le contexte des deepfakes. En contrepartie, le coût temporel d'exécution est beaucoup plus élevé (environ 4 à 5 fois plus long que la \texttt{V3}).
+        \item La \texttt{V4} apparaît donc comme une alternative de meilleure qualité visuelle pour la segmentation elle-même.
+    \end{itemize}
 \end{itemize}
+
+Les deux approches doivent à ce stade être vues comme complémentaires plutôt que concurrentes : la \texttt{V3} est plus économique et plus flexible, tandis que la \texttt{V4} plus coûteuse mais plus performante qualitativement.
 
 \end{document}
