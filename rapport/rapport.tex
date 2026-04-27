@@ -296,7 +296,7 @@ Une fois la segmentation effectuée, plusieurs visualisations permettent d'éval
     \item le masque obtenu sur une frame unique avec son overlay
 \rapportfigure{sam2_overlay_v3.png}{0.7}{Exemple de masque obtenu sur une frame de la vidéo par le pipeline principal \texttt{V3}.}{fig:sam2overlay}
     \item les anomalies de segmentation les plus marquées, détectées par les métriques temporelles
-\rapportfigure{anomalie_overlay_1_v3.png}{0.7}{Exemple d'anomalie de segmentation détectée automatiquement parmi les frames les plus incohérentes.}{fig:anomaliesv3}
+\rapportfigure{anomalie_overlay_1_v3.png}{0.7}{Exemple d'anomalie de segmentation détectée automatiquement parmi les frames les plus incohérentes.}{fig:anomalies}
     \item la vidéo détourée produite sur fond noir.
 \end{itemize}
 
@@ -313,13 +313,54 @@ La métrique de sélection du meilleur prompt correspond au taux de confiance de
 L'exécution complète de la segmentation est ensuite réalisée par morceaux successifs, avec un découpage en blocs de $8$ frames et une propagation vidéo pilotée directement par \texttt{SAM 3}.
 Dans notre configuration Colab actuelle, cette approche demande environ $1$h$30$ d'exécution sur la vidéo principale, soit environ une image toutes les $4$ secondes.
 
-\rapportfigure{sam3_prompt_v4.png}{0.4}{Exemple de calibration d'un prompt texte dans la \texttt{V4} basée sur \texttt{SAM 3}.}{fig:sam3}
-
+\rapportfigure{sam3_prompt_v4.png}{0.8}{Exemple de calibration d'un prompt texte dans la \texttt{V4} basée sur \texttt{SAM 3}.}{fig:sam3}
 
 \subsection{Résultats de segmentation \texttt{SAM 3} (V4)}
 
-...
-\rapportfigure{anomalie_overlay_1_v4.png}{0.7}{...}{fig:anomaliesv4}
+La \texttt{V4} a été exécutée sur la même vidéo témoin de $1329$ frames que la \texttt{V3}, avec une segmentation entièrement pilotée par \texttt{SAM 3}.
+L'intérêt principal de cette version est qualitatif : les calques obtenus sont globalement plus complets et plus cohérents temporellement que dans la \texttt{V3}, en particulier sur les parties fines du sujet.
+
+Sur la vidéo principale, l'amélioration la plus visible concerne la préservation de la silhouette supérieure de la danseuse, notamment la tête et les cheveux.
+Là où la \texttt{V3} perd régulièrement ces structures ou produit des calques partiellement disjoints, la \texttt{V4} conserve une forme plus continue du corps au fil du temps.
+Cette différence est particulièrement importante dans notre contexte, car les mouvements rapides, les postures extrêmes et les passages devant la barre rendent précisément ces zones difficiles à segmenter correctement.
+
+La figure~\ref{fig:v3_v4_anomalie_391} illustre cette différence sur une même séquence de frames centrée sur la frame $391$.
+Dans la \texttt{V3}, on observe une perte importante de la partie supérieure du corps, ainsi qu'une segmentation incomplète de la danseuse.
+Dans la \texttt{V4}, la silhouette reste nettement plus fidèle, avec une meilleure conservation des cheveux et de la continuité corporelle.
+
+\begin{figure}[H]
+    \centering
+    \begin{minipage}{0.49\linewidth}
+        \centering
+        \includegraphics[width=\linewidth]{anomalie_overlay_1_v3.png}
+        
+        \vspace{0.2em}
+        {\texttt{V3} : \texttt{NLF} + \texttt{SAM 2}}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.49\linewidth}
+        \centering
+        \includegraphics[width=\linewidth]{anomalie_overlay_1_v4.png}
+        
+        \vspace{0.2em}
+        {\texttt{V4} : \texttt{SAM 3}}
+    \end{minipage}
+    \caption{Comparaison qualitative entre la \texttt{V3} et la \texttt{V4} sur une séquence de frames centrée sur la frame $391$. La \texttt{V4} conserve mieux la silhouette globale de la danseuse, en particulier la tête et les cheveux, alors que la \texttt{V3} produit ici une segmentation plus incomplète.}
+    \label{fig:v3_v4_anomalie_391}
+\end{figure}
+
+Sur la frame centrale $391$, il est également possible de comparer directement les masques produits par les deux pipelines.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.98\linewidth]{frame_0391_summary.png}
+    \caption{Comparaison locale des masques obtenus sur la frame $391$. Les zones blanches sont détectées par les deux pipelines, tandis que les zones rouges correspondent aux régions segmentées par la \texttt{V4} mais non détectées par la \texttt{V3}.}
+    \label{fig:v3_v4_frame391_local}
+\end{figure}
+
+Cette amélioration qualitative se paie toutefois par un coût d'exécution nettement plus élevé.
+Là où la \texttt{V3} demande environ $17$ minutes sur la vidéo témoin, la \texttt{V4} nécessite environ $1$h$30$, soit un facteur d'environ $5$ en temps de calcul.
+La \texttt{V4} apparaît donc comme une version plus convaincante visuellement pour la segmentation elle-même, tandis que la \texttt{V3} reste plus adaptée à des expérimentations rapides ou à la mise en place de métriques sur un grand nombre de séquences.
 
 \subsection{Limites qualitatives observées}
 Concernant la \texttt{V3}, malgré des résultats globalement encourageants, plusieurs défauts reviennent de manière récurrente.
@@ -329,9 +370,9 @@ De manière plus générale, les parties fines du corps et certains contours peu
 Puisque le problème réside dans les transitions entre les deux outils, il aurait pu être envisagé de composer les fenêtres de frames de \texttt{SAM 2} l'une au-dessus de l'autre. Cela permettrait de fluidifier les bugs de transitions.
 Une fonction permettant de trouver le meilleur des deux mondes serait alors la question légitime, que nous avons choisi de ne pas creuser car les résultats étant déjà satisfaisants.
 
-Concernant la \texttt{V4}, elle permet de régler tous ces problèmes car la propagation est beaucoup plus qualitative, rendant un résultat presque parfait.
-Les sorties observées avec \texttt{SAM 3} montrent en effet une meilleure préservation de la silhouette globale et des structures fines, là où la \texttt{V3} perdait régulièrement des détails comme les cheveux ou certaines extrémités.
-Toutefois, le coût de calcul de cette approche est le principal problème, et dépend donc de la qualité souhaitée pour la segmentation vidéo.
+Concernant la \texttt{V4}, les résultats observés sont nettement plus convaincants sur la vidéo témoin.
+La propagation par \texttt{SAM 3} permet une meilleure préservation de la silhouette globale et des structures fines, là où la \texttt{V3} perdait régulièrement des détails comme les cheveux ou certaines extrémités.
+Cette amélioration reste toutefois conditionnée par un coût d'exécution beaucoup plus élevé, dépendant notamment de la qualité souhaitée pour la segmentation vidéo.
 
 \newpage
 
