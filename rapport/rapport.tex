@@ -68,7 +68,7 @@
   singlelinecheck=false
 }
 
-% --- Macros utiles ---
+% Macros utiles :
 \newcommand{\todo}[1]{\textcolor{red}{[À compléter : #1]}}
 \newcommand{\rapportfigure}[4]{%
 \begin{figure}[H]
@@ -81,7 +81,7 @@
 \end{figure}
 }
 
-% --- Informations du document ---
+% Informations du document :
 \title{Méthodes de vision par ordinateur pour la segmentation, l'analyse de pose et la réinsertion vidéo}
 \author{Tom LE BER \and Tony PEROTTINO}
 \date{}
@@ -121,10 +121,10 @@ Ce procédé permet de simuler des actions ou des paroles n'ayant jamais eu lieu
 
 Plutôt que de chercher à repérer directement les manipulations finales, l'objectif de ce TER est d'étudier un procédé courant dans la manipulation vidéo : la segmentation vidéo.
 Nous proposons dans ce rapport la mise en place d'une chaîne de traitement permettant d'analyser une vidéo de danse, d'isoler automatiquement la personne présente dans la scène, puis de la réinsérer sur un nouveau fond de la manière la plus réaliste possible.
-Ce problème mobilise plusieurs thématiques de vision par ordinateur : l'analyse de pose, la segmentation vidéo, la reconstruction d'une vidéo détourée et l'évaluation qualitative et quantitative des résultats obtenus.
+Ce problème mobilise plusieurs thématiques de vision par ordinateur à savoir l'analyse de pose, la segmentation vidéo, la reconstruction d'une vidéo détourée et l'évaluation qualitative et quantitative des résultats obtenus.
 
-La segmentation vidéo est une méthode de traitement d'image qui consiste à diviser chaque image d'une séquence en plusieurs régions ou segments homogènes. Les critères peuvent être basés sur la forme, la couleur, un mouvement, ou même plus récemment de traquer une personne ou un objet.
-Dans le contexte du deepfake, c'est une sorte de scalpel numérique permettant d'isoler précisément les éléments que l'IA devra modifier ou remplacer. C'est ce pré-traitement qui crée alors l'illusion de réel, puisque les vidéos sans retouches sont systématiquement basées sur la réalité dans les deepfakes les plus réussis.
+La segmentation vidéo est une méthode de traitement d'image qui consiste à diviser chaque image d'une séquence en plusieurs régions ou segments homogènes. Les critères peuvent être basés sur la forme, la couleur, un mouvement, ou même de traquer un objet ou une personne selon ce qu'elle est.
+Dans le contexte du deepfake, la segmentation vidéo est un scalpel numérique permettant d'isoler précisément les éléments que l'IA devra modifier ou remplacer. C'est ce pré-traitement qui crée alors l'illusion de réel, puisque les vidéos sans retouches sont systématiquement basées sur la réalité dans les deepfakes les plus réussis.
 
 Dans notre cas d'étude, nous avons utilisé un ensemble de vidéos de pole dance dans l'objectif de traquer exclusivement le danseur (ou la danceuse).
 Il s'agit d'une tâche difficile car la segmentation doit comprendre que l'objet à découper ne comprend pas la barre de pole, qui passe périodiquement à l'avant et l'arrière du corps.
@@ -184,14 +184,14 @@ La version \texttt{V3} correspond à la version la plus aboutie utilisant les ou
 Elle reprend la logique de la \texttt{V2}, mais elle y ajoute un travail plus systématique sur l'analyse des résultats par la de recherche de métriques justifiant la qualité de reconstruction vidéo, en plus d'une possibilité de tester n'importe quelle vidéo hors du dataset d'origine.
 C'est sur cette version dont le rapport s'appuie le plus, et comme base des différentes implémentations proposées dans le projet.
 
-\subsection{Version V4 : exploration de \texttt{SAM 3}}
-% TODO Quand on aura fini la V4
-La version \texttt{V4} constitue une nouvelle piste de travail encore en cours de création.
-L'objectif est de tester \texttt{SAM 3} comme nouvelle approche pour la segmentation, d'étudier son comportement sur la vidéo principale et d'évaluer s'il peut remplacer ou compléter la stratégie de la \texttt{V3} (\texttt{NLF} et \texttt{SAM 2}).
-Cette version de \texttt{SAM} est récente et a été publiée au cours de notre TER, et n'a donc pas été directement incluse dans notre stratégie globale.
-À ce stade, cette version est à considérer comme une \emph{approche exploratoire}, très prometteuse mais non encore stabilisée.
+\subsection{Version V4 : pipeline de segmentation par \texttt{SAM 3}}
 
-\newpage
+La version \texttt{V4} correspond à une implémentation fonctionnelle de segmentation vidéo reposant entièrement sur \texttt{SAM 3}, car cette version est plus puissante et permissive.
+Contrairement aux versions \texttt{V2} et \texttt{V3}, elle n'a plus besoin de \texttt{NLF} pour fournir des joints 2D servant à initialiser la segmentation.
+L'approche devient alors plus directe : un prompt texte est d'abord sélectionné sur une frame de référence, puis \texttt{SAM 3} est utilisé comme unique moteur de segmentation et de propagation vidéo.
+
+L'intérêt principal de cette version est qualitatif : les calques obtenus sont globalement plus cohérents que dans la \texttt{V3}, en particulier sur les parties fines du sujet comme les cheveux, qui étaient fréquemment dégradés dans l'approche \texttt{NLF} + \texttt{SAM 2}.
+En contrepartie, le coût computationnel augmente fortement. La \texttt{V4} doit donc être comprise comme une alternative plus lente mais qualitativement plus solide pour la segmentation vidéo.
 
 \section{Données et protocole expérimental}
 Les données dont nous avons à disposition pour ce TER est un ensemble d'environ 50 vidéos de pole dance.
@@ -210,7 +210,7 @@ Le protocole général adopté au cours du stage peut être résumé comme suit,
     \item Evaluer qualitativement et quantitativement les résultats obtenus
 \end{enumerate}
 
-Ce protocole a servi de structure commune aux différentes versions du notebook, même si les outils précis employés ont évolué au cours du temps.
+L'étape numéro 3 varie en fonction de la version du notebook utilisée et est détaillé dans la suite du rapport.
 
 \newpage
 
@@ -233,11 +233,11 @@ Le temps moyen d'inférence observé est de $309{,}7$ ms par frame, correspondan
 Ces résultats ont montré que \texttt{NLF} constitue un bon outil d'analyse de pose pour obtenir une compréhension grossière du mouvement de la danseuse au cours du temps (étant donné que le résultat est un ensemble de points du squelette).
 Les visualisations produites dans le notebook permettent notamment d'observer :
 \begin{itemize}
-    \item un overlay 2D des joints sur une frame ;
+    \item un overlay 2D des joints sur une frame,
 \rapportfigure{nlf_detection_2d_v1.png}{0.40}{Exemple de détection 2D produite par \texttt{NLF} sur une frame de la vidéo principale.}{fig:nlf2d}
-    \item une mosaïque de plusieurs frames annotées ;
-\rapportfigure{nlf_mosaique_v1.png}{0.92}{Mosaïque de plusieurs frames annotées par \texttt{NLF}. Cette visualisation permet d'apprécier qualitativement la robustesse du modèle sur différentes postures.}{fig:nlfmosaique}
-    \item l'évolution temporelle de la coordonnée $Z$ d'un joint ;
+    \item une mosaïque de plusieurs frames annotées,
+\rapportfigure{nlf_mosaique_v1.png}{0.80}{Mosaïque de plusieurs frames annotées par \texttt{NLF}. Cette visualisation permet d'apprécier qualitativement la robustesse du modèle sur différentes postures.}{fig:nlfmosaique}
+    \item l'évolution temporelle de la coordonnée $Z$ d'un joint,
     \item une visualisation 3D de la pose estimée.
 \rapportfigure{nlf_pose3d_v1.png}{0.58}{Exemple de visualisation 2D/3D de la pose estimée.}{fig:nlf3d}
 \end{itemize}
@@ -247,40 +247,46 @@ Même si \texttt{NLF} fournit des résultats utiles, cette étape présente plus
 D'une part, une estimation de pose correcte ne garantit pas une bonne segmentation : disposer de joints ne suffit pas à reconstruire précisément les contours du corps, notamment pour les cheveux, les vêtements ou les membres partiellement flous.
 D'autre part, la qualité des prédictions peut varier selon la posture, l'occlusion par la barre ou la dynamique du mouvement.
 
-Ainsi, dans notre pipeline, l'analyse de pose n'est pas utilisée comme finalité en soi, mais comme base d'informations pour guider une méthode de segmentation plus adaptée au détouré précis de la danseuse.
+Cette limite devient particulièrement visible lorsqu'on compare la \texttt{V3} à la \texttt{V4}.
+Dans la \texttt{V4}, l'analyse de pose n'est plus utilisée pour la segmentation : \texttt{SAM 3} segmente directement la danseuse à partir d'un prompt texte, sans passer par une étape préalable de joints 2D/3D.
+Cette modification simplifie conceptuellement la pipeline de découpe et permet de mieux préserver certaines structures fines du sujet, mais au prix d'un temps d'exécution beaucoup plus élevé, de l'ordre de $1$h$30$ sur la vidéo témoin.
 
 \newpage
 
-\section{Segmentation vidéo et reconstruction : implémentation principale (V3)}
-La segmentation vidéo repose sur l'utilisation d'un second outil : \texttt{SAM}. Il permet de détourer des formes, notamment de personnes, sur un flux photo ou vidéo.
-Cet outil prend en entrée un ensemble de points à l'intérieur et à l'exétrieur de la forme désignée, et permet de détourer les contour de la forme. Le résultat obtenu est un calque binaire de la forme trouvée.
-La contribution centrale du projet, dans son état actuel, repose alors sur la combinaison de \texttt{NLF} et de \texttt{SAM 2}.
-% L'idée générale est la suivante : on repère d'abord la personne dans certaines frames grâce à \texttt{NLF}, puis on utilise ces informations pour initialiser ou réinitialiser \texttt{SAM 2}, qui propage ensuite les masques sur des segments de la vidéo.
+\section{Segmentation vidéo et reconstruction : deux choix d'implémentation (V3 \& V4)}
 
-\subsection{Principe général du pipeline}
-L'outil \texttt{SAM} utilisé seul sur notre vidéo témoin possède des résultats moyennement convaincants.
+La segmentation vidéo de la \texttt{V3} repose sur l'utilisation conjointe de \texttt{NLF} et de \texttt{SAM 2}. \texttt{SAM} permet de détourer des formes, notamment de personnes, sur un flux photo ou vidéo.
+Cet outil prend en entrée un ensemble de points à l'intérieur et à l'extérieur de la forme désignée, puis produit un calque binaire de la région trouvée.
+Dans la \texttt{V3}, la contribution centrale du projet consiste alors à utiliser les joints 2D fournis par \texttt{NLF} pour guider périodiquement \texttt{SAM 2} sur la vidéo.
+
+Une seconde implémentation existe désormais dans la \texttt{V4}.
+Elle remplace totalement cette stratégie par une segmentation vidéo entièrement basée sur \texttt{SAM 3}, pilotée à partir d'un prompt texte et propagée directement sur la séquence.
+Cette alternative ne nécessite plus \texttt{NLF}, et elle donne sur la vidéo témoin des calques globalement plus cohérents, mais pour un coût de calcul beaucoup plus important.
+
+\subsection{Stratégie du pipeline \texttt{NLF} + \texttt{SAM 2} (V3)}
+L'outil \texttt{SAM 2} utilisé seul sur notre vidéo témoin possède des résultats moyennement convaincants.
 La vidéo obtenue en pointant la danceuse sur la première frame manuellement puis en laissant la propagation s'effectuer sur le reste de la vidéo donne des calques clignotants et peu convaincants, à cause en partie des passages à répétition de la danceuse passant devant et derrière la barre de pole faussant la détection.
-On peut assez facilement remarquer que \texttt{SAM} perd le contexte de la forme quand il est lancé seul, il réussit à garder une forme correcte environ une dizaine de secondes.
+On peut assez facilement remarquer que \texttt{SAM 2} perd le contexte de la forme quand il est lancé seul, il réussit à garder une forme correcte environ une dizaine de secondes.
 
-La sortie de \texttt{NLF}, c'est-à-dire l'ensemble de joints 2D trouvés, nous permet de contourner ce problème : en les confiant à \texttt{SAM} pour qu'il dessine un forme à partir de ceux-ci, les résultats sont plus stables.
-En termes de temps d'exécution, \texttt{NLF} et \texttt{SAM} sont raisonnables, pour \texttt{NLF} il faut environ $200$ms pour $1$ frame ($5$ frames par secondes), donc $4'43''$ sur $1329$ frames pour la vidéo témoin.
-Quant à lui, \texttt{SAM} est 7 fois plus lent environ pour une frame, soit $0{,}6$ frames par seconde. Ménager \texttt{SAM} permet de gagner du temps.
+La sortie de \texttt{NLF}, c'est-à-dire l'ensemble de joints 2D trouvés, nous permet de contourner ce problème : en les confiant à \texttt{SAM 2} pour qu'il dessine un forme à partir de ceux-ci, les résultats sont plus stables.
+En termes de temps d'exécution, \texttt{NLF} et \texttt{SAM 2} sont raisonnables, pour \texttt{NLF} il faut environ $200$ms pour $1$ frame ($5$ frames par secondes), donc $4'43''$ sur $1329$ frames pour la vidéo témoin.
+Quant à lui, \texttt{SAM 2} est 7 fois plus lent environ pour une frame, soit $0{,}6$ frames par seconde. Ménager \texttt{SAM 2} permet de gagner du temps.
 
-On peut donc considérer la situation comme un curseur qui oscille entre l'usage de \texttt{NLF} et \texttt{SAM} dont les critères sont la qualité des calques et le temps d'exécution.
+On peut donc considérer la situation comme un curseur qui oscille entre l'usage de \texttt{NLF} et \texttt{SAM 2} dont les critères sont la qualité des calques et le temps d'exécution.
 La stratégie est d'utiliser périodiquement les deux outils sur des segents de frames définis à l'avance.
 Sous-utiliser \texttt{NLF} rend les calques instables comme dit précédemment, mais le sur-utiliser fait aussi chuter la qualité de la vidéo, car certaines positions où les joints superposent davantage la barre rend un calque combinant la danseuse à la barre.
-De plus \texttt{SAM} réagit moins bien quand la série de frame est trop courte. et \texttt{NLF} a tendance à faire apparaitre la barre quand la segmentation est recalculée.
+De plus \texttt{SAM 2} réagit moins bien quand la série de frame est trop courte. \texttt{NLF} a tendance à faire apparaitre la barre quand la segmentation est recalculée.
 Nous avons finalement opté pour un compromis : la vidéo est segmentée par morceaux successifs d'environ 2 secondes, chaque morceau étant initialisé à partir d'une frame d'ancrage puis propagé au moyen de \texttt{SAM 2}.
 Plus le découpage est fin, plus \texttt{NLF} prend aussi plus de temps à se lancer et s'arrêter.
-Au niveau du temps d'éxécution, on est autour de 17 minutes pour $1329$ frames ($0.767$ frames par secondes), la durée pouvant atteindre un peu moins de 20 minutes avec \texttt{SAM} uniquement.
+Au niveau du temps d'éxécution, on est autour de 17 minutes pour $1329$ frames ($0.767$ frames par secondes), la durée pouvant atteindre un peu moins de 20 minutes avec \texttt{SAM 2} uniquement.
 
 Cette approche présente deux intérêts principaux :
 \begin{itemize}
-    \item elle sépare clairement le rôle de la pose et celui de la segmentation ;
-    \item elle permet de relancer la segmentation régulièrement afin de limiter les dérives au cours du temps.
+    \item séparer clairement le rôle de la pose et celui de la segmentation,
+    \item permettre de relancer la segmentation régulièrement afin de limiter les dérives au cours du temps.
 \end{itemize}
 
-\subsection{Résultats de segmentation}
+\subsection{Résultats de segmentation \texttt{NLF} + \texttt{SAM 2} (V3)}
 Dans la version \texttt{V3}, l'inférence \texttt{NLF} est réalisée sur les $1329$ frames de la séquence.
 Le temps moyen d'inférence indiqué pour ce cas particulier est de $176{,}8$ ms par frame, soit environ $5{,}66$ images par seconde.
 Le notebook signale également $1210$ frames avec personne détectée dans ce cadre expérimental.
@@ -294,12 +300,31 @@ Une fois la segmentation effectuée, plusieurs visualisations permettent d'éval
     \item la vidéo détourée produite sur fond noir.
 \end{itemize}
 
+\subsection{Stratégie du pipeline \texttt{SAM 3} (V4)}
+La \texttt{V4} effectue la segmentation vidéo sans analyse de pose préalable et prend comme donnée d'entrée uniquement un prompt texte (celui ayant le meilleur taux de reconstruction parmi une série de prompts entrés).
+\texttt{SAM 3} réalise ensuite une propagation vidéo comme outil de segmentation.
+Sur la vidéo témoin, cette approche supprime une grande partie des défauts visibles liés à la perte de contexte périodique de l'utilisation de \texttt{NLF} ou parce que \texttt{SAM 2} est moins évolué.
+La contrepartie de la qualité visuelle se retrouve dans le temps d'exécution, par exemple la vidéo témoin nécessite environ $1$h$30$ pour $1329$ frames.
+
+Nous avons analysé plusieurs prompts différents parmi une sélection de 8 formulations personnalisées qui nous semblaient appropriées. Notre vidéo témoin possède le simple prompt "\texttt{person}" par exemple.
+La métrique de sélection du meilleur prompt correspond au taux de confiance de \texttt{SAM 3} délivré pour la segmentation de la première frame.
+
+L'exécution complète de la segmentation est ensuite réalisée par morceaux successifs, avec un découpage en blocs de $8$ frames et une propagation vidéo pilotée directement par \texttt{SAM 3}.
+Dans notre configuration Colab actuelle, cette approche demande environ $1$h$30$ d'exécution sur la vidéo principale, soit environ une image toutes les $4$ secondes.
+
+\subsection{???}
+
 \subsection{Limites qualitatives observées}
-Malgré des résultats globalement encourageants, plusieurs défauts reviennent de manière récurrente.
+Concernant la \texttt{V3}, malgré des résultats globalement encourageants, plusieurs défauts reviennent de manière récurrente.
 Le plus notable concerne les cheveux, qui ne sont pas toujours correctement intégrés au masque, du fait qu'ils ne soient pas inclus dans les points de \texttt{NLF} et que leur mouvement est plus rapide que le reste du corps se faisant entrainer dans les mouvements.
 De manière plus générale, les parties fines du corps et certains contours peuvent être mal segmentés, en particulier lorsque la posture est extrême ou lorsqu'une partie du corps est partiellement masquée par la barre.
 
-Il aurait pu être envisager de combiner dans la stratégie les frames de transitions entre les deux outils, permettant peut-être de trouver le meilleur des deux mondes avec une approche combinatoire. Nous n'avons pas creuser cette piste, les résultats étant déjà satisfaisants.
+Puisque le problème réside dans les transitions entre les deux outils, il aurait pu être envisagé de composer les fenêtres de frames de \texttt{SAM 2} l'une au-dessus de l'autre. Cela permettrait de fluidifier les bugs de transitions.
+Une fonction permettant de trouver le meilleur des deux mondes serait alors la question légitime, que nous avons choisi de ne pas creuser car les résultats étant déjà satisfaisants.
+
+Concernant la \texttt{V4}, elle permet de régler tous ces problèmes car la propagation est beaucoup plus qualitative, rendant un résultat presque parfait.
+Les sorties observées avec \texttt{SAM 3} montrent en effet une meilleure préservation de la silhouette globale et des structures fines, là où la \texttt{V3} perdait régulièrement des détails comme les cheveux ou certaines extrémités.
+Toutefois, le coût de calcul de cette approche est le principal problème, et dépend donc de la qualité souhaitée pour la segmentation vidéo.
 
 \newpage
 
@@ -324,7 +349,7 @@ En présence d'erreurs de segmentation ou de décalages géométriques, les arte
 \newpage
 
 \section{Évaluation quantitative des résultats}
-Un aspect important de la version \texttt{V3} du projet est l'analyse consacré à l'évaluation quantitative des masques générés.
+Un aspect important à partir de la version \texttt{V3} du projet est l'analyse consacré à l'évaluation quantitative des masques générés.
 Plutôt que de se limiter à une inspection visuelle, plusieurs métriques ont été mises en place pour détecter automatiquement des incohérences ou mesurer la stabilité temporelle du détouré obtenu.
 
 \subsection{Objectif des analyse}
@@ -524,6 +549,15 @@ Tout d'abord, l'analyse de pose et la segmentation répondent à des besoins dif
 L'analyse de pose permet de structurer la scène et de localiser approximativement la danseuse, tandis que la segmentation fournit l'information précise nécessaire à la production d'une vidéo détourée exploitable.
 Dans notre pipeline, la combinaison \texttt{NLF + SAM 2} constitue ainsi un compromis fonctionnel entre robustesse, disponibilité des outils et intégration pratique dans Colab.
 
+Tout d'abord, l'analyse de pose et la segmentation répondent à des besoins différents mais complémentaires.
+\begin{itemize}
+    \item Dans la \texttt{V3}, l'analyse de pose permet de structurer la scène et de localiser approximativement la danseuse, tandis que la segmentation fournit l'information précise nécessaire à la production d'une vidéo détourée exploitable.
+          La combinaison \texttt{NLF} + \texttt{SAM 2} constitue ainsi un compromis fonctionnel entre robustesse, disponibilité des outils et intégration pratique dans Colab.
+    \item La \texttt{V4} modifie cependant cet équilibre.
+          En remplaçant totalement \texttt{NLF} et \texttt{SAM 2} par \texttt{SAM 3}, elle supprime l'étape de pose comme guide de segmentation et produit des calques plus cohérents sur la vidéo témoin, notamment sur les parties fines.
+          En revanche, cette amélioration qualitative s'accompagne d'un coût computationnel beaucoup plus élevé. Les deux approches apparaissent alors comme complémentaires : la \texttt{V3} reste plus légère et mieux adaptée aux expérimentations rapides, tandis que la \texttt{V4} fournit une segmentation plus convaincante mais plus coûteuse.
+\end{itemize}
+
 Ensuite, la mise en place de métriques d'évaluation s'est révélée essentielle.
 Sans elles, l'analyse du pipeline resterait limitée à des impressions visuelles.
 Même imparfaites, les métriques basées sur l'aire, les histogrammes et les matrices de confusion permettent d'objectiver certaines faiblesses du système et d'identifier des frames à inspecter en priorité.
@@ -555,6 +589,24 @@ Parmi les plus importantes, on peut citer :
 \begin{itemize}
     \item l'amélioration de la qualité des masques en améliorant les outils déjà existants ou en explorant de nouveaux (étudié avec la \texttt{V4}).
     \item l'enrichissement et le raffinement des métriques de qualité.
+    \item l'automatisation plus poussée de la réinsertion sur un nouveau fond.
+\end{itemize}
+
+
+
+Au terme de ce TER, nous avons mis en place deux chaînes de traitement exploitables pour la segmentation vidéo de pole dance.
+\begin{itemize}
+    \item Le premier pipeline (\texttt{V3}) constitue une démarche qualitative dans l'ensemble avec un temps d'exécution relativement court. Il est particulièrement adapté aux expérimentations rapides et à l'étude des métriques d'estimation de qualité de reconstruction vidéo.
+    \item Le second pipeline (\texttt{V4}) rend des résultats proches de la perfection très convaincants, avec une contrepartie élevée dans le coût temporel (environ 4 à 5 fois plus long que la \texttt{V3}).
+\end{itemize}
+
+La \texttt{V3} reste donc une bonne base méthodologique pour l'évaluation quantitative et l'exploration rapide de plusieurs vidéos, tandis que la \texttt{V4} apparaît comme une alternative de meilleure qualité visuelle pour la segmentation elle-même.
+Les deux approches doivent à ce stade être vues comme complémentaires plutôt que concurrentes : la \texttt{V3} est plus économique et plus flexible, la \texttt{V4} plus coûteuse mais plus performante qualitativement.
+
+Différentes perspectives d'améliorations :
+\begin{itemize}
+    \item l'optimisation de la \texttt{V4}, afin de bénéficier de la qualité de \texttt{SAM 3} avec un coût d'exécution plus raisonnable,
+    \item l'enrichissement et le raffinement des métriques de qualité,
     \item l'automatisation plus poussée de la réinsertion sur un nouveau fond.
 \end{itemize}
 
