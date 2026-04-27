@@ -504,7 +504,7 @@ OK (1)  & 0.62 & 0.90 & 0.73 \\
 Ces résultats montrent que la méthode détecte plus facilement les zones stables que les erreurs. Ce qui est normal car la majorité des frames sont bonnes.
 Autrement dit, elle est assez performante pour confirmer qu'une séquence est cohérente, mais plus limitée pour identifier de façon fiable toutes les frames réellement problématiques.
 
-\rapportfigure{confusion_etat_sans_overlay_v3.png}{0.70}{Matrice de confusion associée à la détection des frames correctes et incorrectes, sans overlay.}{fig:confusion-etat}
+\rapportfigure{confusion_etat_sans_overlay_v3.png}{0.65}{Matrice de confusion associée à la détection des frames correctes et incorrectes, sans overlay.}{fig:confusion-etat}
 
 Pour l'évaluation des changements d'état, l'indicateur semble naïvement performant puisque la distance de Bhattacharyya est grande lors des grandes variations des histogrammes.
 
@@ -532,7 +532,7 @@ CHANGEMENT (1) & 0.10 & 0.15 & 0.12 \\
 \end{tabular}
 \end{center}
 
-\rapportfigure{confusion_changements_sans_overlay_v3.png}{0.70}{Matrice de confusion associée à la détection des changements d'état, sans overlay.}{fig:confusion-changement}
+\rapportfigure{confusion_changements_sans_overlay_v3.png}{0.65}{Matrice de confusion associée à la détection des changements d'état, sans overlay.}{fig:confusion-changement}
 
 On remarque alors que les frames de variations ne sont pas particulièrement bien détectées. On peut expliquer ça parce que les variations minimes ont été punies lors de l'annotation manuelle, qui sont donc dures à repérer depuis les histogrammes.
 On retrouve une asymétrie importante entre la détection des états stables et celle des changements, car les frames marquée BUG sont souvent adjacentes.
@@ -563,7 +563,7 @@ Parmi eux, cinq transitions ont produit un score 3D exploitable, tandis que troi
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.98\linewidth]{aidemos_scores_simple_long.png}
+    \includegraphics[width=0.93\linewidth]{aidemos_scores_simple_long.png}
     \caption{Évolution des sauts du squelette estimés par \texttt{SAM 3D Body} sur les transitions anormales détectées (gauche) et comparaison entre transitions d'erreur et transitions témoins (droite). Les croix rouges correspondent aux transitions pour lesquelles aucun squelette valide n'a pu être reconstruit.}
     \label{fig:aidemos_scores}
 \end{figure}
