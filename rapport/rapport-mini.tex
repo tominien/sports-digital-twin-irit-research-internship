@@ -85,9 +85,10 @@
 \author{Tom LE BER \and Tony PEROTTINO}
 \date{}
 
-
 \begin{document}
+
 \pagenumbering{gobble}
+\pagestyle{empty}
 
 \maketitle
 \begin{center}
@@ -95,6 +96,15 @@ TER L3 MIDL -- Université de Toulouse
 \end{center}
 
 \newpage
+
+\section*{Remerciements}
+\addcontentsline{toc}{section}{Remerciements}
+
+Nous remercions Emmanuelle Claeys, encadrante de ce TER et responsable de l'équipe MISFIT à l'IRIT, pour son soutien tout au long de ce travail de recherche, pour sa disponibilité et son implication à travers multiples propositions d'améliorations diverses dans ce TER.  
+Nous la remercions également pour l'écriture et la relecture de ce rapport, ainsi que l'aide apportée à la préparation de l'oral de fin de projet.
+
+Nous remercions Frédéric Migeon et Olivier Thual pour leurs retours à propos des diapositives de l'oral du projet. 
+
 \clearpage
 \begingroup
 \setlength{\parskip}{0pt}
@@ -103,21 +113,10 @@ TER L3 MIDL -- Université de Toulouse
 \endgroup
 \clearpage
 
-\section*{Remerciements}
-\addcontentsline{toc}{section}{Remerciements}
-
-Nous souhaitons tout d'abord remercier Emmanuelle Claeys, encadrante de ce TER, pour son suivi attentif tout au long du projet.
-Les rendez-vous réguliers organisés environ toutes les trois à quatre semaines nous ont permis de mieux structurer notre travail, de débloquer plusieurs difficultés techniques et d'explorer de nouvelles pistes, notamment autour de la recherche de nouvelles métriques d'évaluation des vidéos produites, par exemple.
-Nous la remercions également pour sa grande aide dans l'amélioration du rapport et des diapositives de présentation de ce projet.
-
-Nous remercions également une enseignante de mathématiques de quatrième année à l'INSA Toulouse, membre du même groupe de recherche MISFIT que Mme Claeys, pour les nombreuses pistes proposées autour de l'implémentation des métriques d'estimation par les aires.
-
-Enfin, nous remercions Frédéric Migeon et Olivier Thual pour leurs retours sur les diapositives de présentation du projet, à la fois sur le fond écrit et sur la manière de les présenter à l'oral.
-
-
-\newpage
 \pagenumbering{arabic}
 \setcounter{page}{1}
+\pagestyle{plain}
+
 \section*{Préambule}
 \addcontentsline{toc}{section}{Préambule}
 Ce travail a été réalisé dans le cadre de la Double Licence Mathématiques-Informatique (MIDL) de l'université de Toulouse.
@@ -127,6 +126,8 @@ Ce rapport fait office de compte-rendu de l'entièreté de notre travail de rech
 \section{Introduction}
 Ce TER s'inscrit dans une démarche plus générale, qui est de déterminer analytiquement la présence de montages par IA, mieux connus sous le nom de deepfakes.
 
+\rapportfigure{deepfake_exemple_1.png}{0.40}{Exemple de deepfake (réinsertion de visage)}{fig:deepfake_exemple_1}
+\rapportfigure{deepfake_exemple_2.png}{0.40}{Exemple de deepfake (compositions d'éléments)}{fig:deepfake_exemple_2}
 
 Le deepfake est une technique de manipulation numérique utilisant l'IA pour créer des images, des vidéos ou des audios hyperréalistes mais en réalité entièrement factices.
 Ce procédé permet de simuler des actions ou des paroles n'ayant jamais eu lieu, entraînant entre autres des risques majeurs de désinformation, d'usurpation d'identité et de manipulation de l'opinion.
@@ -144,8 +145,6 @@ L'objectif est donc de produire un masque correct sur une vidéo complète, et d
 
 La sélection de vidéos de danseurs acrobatiques est aussi utile car les membres et articulations au contact de la barre sont peu mobiles et peuvent être appliqués à d'autres usages dans le domaine de l'armée (non abordé dans la suite du rapport).
 Nous prendrons le temps de décrire dans ce rapport les nombreuses difficultés rencontrées plus en détail.
-
-
 
 \section{Problématique et objectifs}
 Le problème étudié peut être résumé de la manière suivante : étant donnée une vidéo contenant une danseuse, comment détourer automatiquement et de manière suffisamment précise pour permettre une réinsertion convaincante sur un nouveau fond ?
@@ -167,7 +166,7 @@ Enfin, la réinsertion finale et son évaluation constituent l'aboutissement du 
 L'œil humain doit à l'issue de la réinsertion être idéalement dupé, la nouvelle vidéo se doit d'être convaincante.
 Il est alors possible d'extraire des données de cette reconstruction afin de la catégoriser d'un score (par exemple). Ce dernier sera aussi un enjeu de ce TER. 
 
-
+\newpage
 
 \section{Évolution du travail et présentation des versions}
 Nous avons choisi de réaliser nos notebooks sur Google Colab, car ils permettent une exécution identique, peu importe la machine utilisée (via le cloud).
@@ -191,19 +190,25 @@ L'idée est d'utiliser les résultats de l'analyse de pose comme points d'ancrag
 Cette version constitue le premier véritable pipeline de segmentation et de reconstruction de la séquence détourée.
 Elle introduit également les premières réflexions sur la réinsertion et sur les limites concrètes du détouré obtenu, notamment au niveau des cheveux ou des parties fines du corps.
 
-\subsection{Version V3 : pipeline principal et évaluation des résultats}
+\subsection{Version V3 (Méthode 1) : pipeline principal et évaluation des résultats}
+Dans la suite du rapport, cette version sera appelée \textit{Méthode 1}. Ce terme permet de désigner plus simplement le premier pipeline complet et fonctionnel développé au cours du TER.
+
 La version \texttt{V3} correspond à la version la plus aboutie utilisant les outils \texttt{NLF} et \texttt{SAM 2}.
-Elle reprend la logique de la \texttt{V2}, mais elle y ajoute un travail plus systématique sur l'analyse des résultats par la recherche de métriques justifiant la qualité de reconstruction vidéo, ainsi qu'une possibilité de tester n'importe quelle vidéo hors du dataset d'origine.
+Elle reprend la logique de la \texttt{V2}, mais y ajoute un travail plus systématique sur l'analyse des résultats, notamment par la recherche de métriques permettant d'évaluer la qualité de reconstruction vidéo.
+Elle permet également de tester le pipeline sur des vidéos extérieures au dataset initial.
 C'est la version sur laquelle le rapport s'appuie le plus, ainsi que la base des différentes implémentations proposées dans le projet.
 
-\subsection{Version V4 : pipeline de segmentation par \texttt{SAM 3}}
+\subsection{Version V4 (Méthode 2) : pipeline de segmentation alternatif par \texttt{SAM 3}}
+Dans la suite du rapport, cette version sera appelée \textit{Méthode 2}. Elle correspond au second pipeline fonctionnel étudié, construit comme une alternative à la Méthode 1 pour la partie segmentation.
 
-La version \texttt{V4} correspond à une implémentation fonctionnelle de segmentation vidéo reposant entièrement sur \texttt{SAM 3}, car cette version est plus puissante et plus permissive.
+\newpage % FOR FORMATTING PURPOSES.
+La version \texttt{V4} repose entièrement sur \texttt{SAM 3}.
 Contrairement aux versions \texttt{V2} et \texttt{V3}, elle n'a plus besoin de \texttt{NLF} pour fournir des joints 2D servant à initialiser la segmentation.
 L'approche devient alors plus directe : un prompt texte est d'abord sélectionné sur une frame de référence, puis \texttt{SAM 3} est utilisé comme unique moteur de segmentation et de propagation vidéo.
 
-L'intérêt principal de cette méthode est qualitatif : les calques obtenus sont globalement plus cohérents que dans la \texttt{V3}, en particulier sur les parties fines du sujet comme les cheveux, qui étaient fréquemment dégradés dans l'approche \texttt{NLF} + \texttt{SAM 2}.
-En contrepartie, le coût computationnel augmente fortement. La \texttt{V4} doit donc être comprise comme une alternative plus lente mais qualitativement plus solide pour la segmentation vidéo.
+L'intérêt principal de cette méthode est qualitatif : les calques obtenus sont globalement plus cohérents que dans la Méthode 1, en particulier sur les parties fines du sujet comme les cheveux, qui étaient fréquemment dégradés dans l'approche \texttt{NLF} + \texttt{SAM 2}.
+En contrepartie, le coût computationnel augmente fortement.
+La Méthode 2 doit donc être comprise comme une alternative plus lente, mais plus solide visuellement pour la segmentation vidéo.
 
 \section{Données et protocole expérimental}
 Les données dont nous disposons pour ce TER sont constituées d'un ensemble d'environ 50 vidéos de danseurs acrobatiques.
@@ -224,7 +229,7 @@ Le protocole général adopté au cours du stage peut être résumé comme suit,
 
 L'étape numéro 3 varie en fonction de la version du notebook utilisée et est détaillée dans la suite du rapport.
 
-
+\newpage
 
 \section{Analyse de pose : pistes explorées et choix retenus}
 L'analyse de pose constitue une première brique importante du projet.
@@ -243,7 +248,17 @@ Le notebook indique qu'une personne est détectée sur $1263$ frames, soit un ta
 Le temps moyen d'inférence observé est de $309{,}7$ ms par frame, correspondant à un débit d'environ $3{,}23$ images par seconde.
 
 Ces résultats ont montré que \texttt{NLF} constitue un bon outil d'analyse de pose pour obtenir une compréhension grossière du mouvement de la danseuse au cours du temps (étant donné que le résultat est un ensemble de points du squelette).
-Les visualisations produites dans le notebook permettent notamment d'observer un overlay 2D des joints, l'évolution temporelle de certaines coordonnées 3D et une visualisation 3D de la pose estimée.
+Les visualisations produites dans le notebook permettent notamment d'observer :
+\begin{itemize}
+    \item un overlay 2D des joints sur une frame,
+\rapportfigure{nlf_detection_2d_v1.png}{0.50}{Exemple de détection 2D produite par \texttt{NLF} sur une frame de la vidéo principale.}{fig:nlf2d}
+\newpage % FOR FORMATTING PURPOSES.
+    \item une mosaïque de plusieurs frames annotées,
+\rapportfigure{nlf_mosaique_v1.png}{0.75}{Mosaïque de plusieurs frames annotées par \texttt{NLF}. Cette visualisation permet de représenter la robustesse du modèle sur différentes postures.}{fig:nlfmosaique}
+    \item l'évolution temporelle de la coordonnée $Z$ d'un joint,
+    \item une visualisation 3D de la pose estimée.
+\rapportfigure{nlf_pose3d_v1.png}{0.53}{Exemple de visualisation 2D/3D de la pose estimée.}{fig:nlf3d}
+\end{itemize}
 
 \subsection{Limites de l'analyse de pose}
 Même si \texttt{NLF} fournit des résultats utiles, cette étape présente plusieurs limites.
@@ -254,11 +269,11 @@ Cette limite devient particulièrement visible lorsqu'on compare les deux métho
 Dans la \textit{Méthode 2}, l'analyse de pose n'est plus utilisée pour la segmentation : \texttt{SAM 3} segmente directement la danseuse à partir d'un prompt texte, sans passer par une étape préalable de joints 2D/3D.
 Cette modification simplifie conceptuellement le pipeline de découpe et permet de mieux préserver certaines structures fines du sujet, mais au prix d'un temps d'exécution beaucoup plus élevé, de l'ordre de $1$h$30$ sur la vidéo témoin.
 
-
+\newpage
 
 \section{Segmentation vidéo et reconstruction : deux choix d'implémentation (Méthodes 1 \& 2)}
 
-Dans la suite du rapport, nous distinguons deux méthodes : la \textit{Méthode 1}, fondée sur l'association de \texttt{NLF} et \texttt{SAM 2}, et la \textit{Méthode 2}, fondée sur \texttt{SAM 3}.
+À partir de cette distinction, nous comparons deux méthodes : la \textit{Méthode 1}, fondée sur l'association de \texttt{NLF} et \texttt{SAM 2}, et la \textit{Méthode 2}, fondée sur \texttt{SAM 3}.
 
 La segmentation vidéo de la \textit{Méthode 1} repose sur l'utilisation conjointe de \texttt{NLF} et de \texttt{SAM 2}. \texttt{SAM} permet de détourer des formes, notamment de personnes, sur un flux photo ou vidéo.
 Cet outil prend en entrée un ensemble de points à l'intérieur et à l'extérieur de la forme désignée, puis produit un calque binaire de la région trouvée.
@@ -299,8 +314,9 @@ Le notebook signale également $1210$ frames avec personne détectée dans ce ca
 Une fois la segmentation effectuée, plusieurs visualisations permettent d'évaluer les résultats :
 \begin{itemize}
     \item le masque obtenu sur une frame unique avec son overlay
-\rapportfigure{sam2_overlay_v3.png}{0.7}{Exemple de masque obtenu sur une frame de la vidéo par le pipeline principal \textit{Méthode 1}.}{fig:sam2overlay}
+\rapportfigure{sam2_overlay_v3.png}{0.6}{Exemple de masque obtenu sur une frame de la vidéo par le pipeline principal \textit{Méthode 1}.}{fig:sam2overlay}
     \item les anomalies de segmentation les plus marquées, détectées par les métriques temporelles
+\rapportfigure{anomalie_overlay_1_v3.png}{0.6}{Exemple d'anomalie de segmentation détectée automatiquement parmi les frames les plus incohérentes.}{fig:anomalies}
     \item la vidéo détourée produite sur fond noir.
 \end{itemize}
 
@@ -310,13 +326,14 @@ Ensuite, \texttt{SAM 3} détoure automatiquement l'objet étudié sur toute la v
 Sur la vidéo témoin, cette approche supprime une grande partie des défauts visibles liés à la perte de contexte périodique de \texttt{NLF} et aux limites de \texttt{SAM 2}.
 La contrepartie de la qualité visuelle se retrouve dans le temps d'exécution : par exemple, la vidéo témoin nécessite environ $1$h$30$ pour $1329$ frames.
 
-Nous avons analysé plusieurs prompts différents parmi une sélection de 8 formulations personnalisées qui nous semblaient appropriées ("\texttt{person}", "\texttt{person near a vertical bar}", etc.). \\
+Nous avons analysé plusieurs prompts différents parmi une sélection de 8 formulations personnalisées qui nous semblaient appropriées ("\texttt{person doing acrobatical dance}", "\texttt{person near a vertical bar}", etc.). \\
 Par exemple, le meilleur prompt sur notre vidéo témoin est "\texttt{person}".
 La métrique de sélection du meilleur prompt correspond au taux de confiance de \texttt{SAM 3} délivré pour la segmentation de la première frame.
 
 L'exécution complète de la segmentation est ensuite réalisée par morceaux successifs, avec un découpage en blocs de $8$ frames et une propagation vidéo pilotée directement par \texttt{SAM 3}.
 Dans notre configuration Colab actuelle, cette approche demande environ $1$h$30$ d'exécution sur la vidéo principale, soit environ une image toutes les $4$ secondes.
 
+\rapportfigure{sam3_prompt_v4.png}{0.75}{Exemple de calibration d'un prompt texte dans la \textit{Méthode 2} basée sur \texttt{SAM 3}.}{fig:sam3}
 
 \subsection{Résultats de segmentation \texttt{SAM 3} (Méthode 2)}
 
@@ -331,7 +348,26 @@ La figure~\ref{fig:v3_v4_anomalie_391} illustre cette différence sur une même 
 Dans la \textit{Méthode 1}, on observe une perte importante de la partie supérieure du corps, ainsi qu'une segmentation incomplète de la danseuse.
 Dans la \textit{Méthode 2}, la silhouette reste nettement plus fidèle, avec une meilleure conservation des cheveux et de la continuité corporelle.
 
-
+\begin{figure}[H]
+    \centering
+    \begin{minipage}{0.4\linewidth}
+        \centering
+        \includegraphics[width=\linewidth]{anomalie_overlay_1_v3.png}
+        
+        \vspace{0.2em}
+        {\textit{Méthode 1} : \texttt{NLF} + \texttt{SAM 2}}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.49\linewidth}
+        \centering
+        \includegraphics[width=\linewidth]{anomalie_overlay_1_v4.png}
+        
+        \vspace{0.2em}
+        {\textit{Méthode 2} : \texttt{SAM 3}}
+    \end{minipage}
+    \caption{Comparaison qualitative entre la \textit{Méthode 1} et la \textit{Méthode 2} sur une séquence de frames centrée sur la frame $391$. La \textit{Méthode 2} conserve mieux la silhouette globale de la danseuse, en particulier la tête et les cheveux, alors que la \textit{Méthode 1} produit ici une segmentation plus incomplète.}
+    \label{fig:v3_v4_anomalie_391}
+\end{figure}
 
 Sur la frame centrale $391$, il est également possible de comparer directement les masques produits par les deux pipelines.
 
@@ -358,7 +394,7 @@ Concernant la \textit{Méthode 2}, les résultats observés sont nettement plus 
 La propagation par \texttt{SAM 3} permet une meilleure préservation de la silhouette globale et des structures fines, là où la \textit{Méthode 1} perdait régulièrement des détails comme les cheveux ou certaines extrémités.
 Cette amélioration reste toutefois conditionnée par un coût d'exécution beaucoup plus élevé, dépendant notamment de la qualité souhaitée pour la segmentation vidéo.
 
-
+\newpage
 
 \section{Réinsertion sur un nouveau fond}
 Une fois la vidéo détourée obtenue, la dernière étape du pipeline consiste à réinsérer la danseuse sur un nouveau fond.
@@ -378,7 +414,7 @@ En présence d'erreurs de segmentation ou de décalages géométriques, les arte
 
 \rapportfigure{reinsertion_v3.png}{0.50}{Exemple de réinsertion de la danseuse sur un nouveau fond.}{fig:reinsertion}
 
-
+\newpage
 
 \section{Évaluation quantitative des résultats}
 Un aspect important de la \textit{Méthode 1} est l'analyse consacrée à l'évaluation quantitative des masques générés.
@@ -413,7 +449,8 @@ Symétriquement, une vidéo parfaite peut avoir une détection de mauvaises fram
 
 Les aires ne sont donc pas très performantes pour déceler les problèmes de manière sûre, et sont en particulier sensibles à la vitesse de déplacement, à l'angle de caméra (en particulier si la caméra est proche ou loin), et à la proportion choisie pour le seuil.
 
-\rapportfigure{aires_v3.png}{0.62}{Évolution temporelle des aires des masques et dérivée seconde associée.}{fig:aires_graphique}
+\rapportfigure{aires_v3.png}{0.65}{Évolution temporelle des aires des masques et dérivée seconde associée.}{fig:aires_graphique}
+\rapportfigure{frame_aires_faux_positif.png}{0.44}{Exemple de frame correcte mais où un bug est détecté sur les frames 484 (gauche) et 486 (droite). C'est un faux positif (la danseuse a la tête en arrière, il est normal qu'elle ne soit pas visible).}{fig:aires_frame_fp}
 
 \subsection{Distance de Bhattacharyya}
 Nous avons alors décidé de s'intéresser aux histogrammes des images, pour obtenir une représentation statistique des images, donc différente de l'approche sur les aires.
@@ -421,16 +458,18 @@ Nous avons alors décidé de s'intéresser aux histogrammes des images, pour obt
 Cette deuxième famille de métriques repose sur la comparaison d'histogrammes projetés des masques successifs.
 Nous avons associé ces histogrammes à la distance de Bhattacharyya (exprimée sous sa forme métrique de Hellinger) calculée à partir des projections suivant les axes horizontal et vertical.
 $H$ représente les histogrammes des images et $\hat{H}$ les histogrammes normalisés.
-\setcounter{equation}{0}
 \begin{align} % 1. Projections brutes :
     H_{x,n}(i) = \sum_{j} I_n(i, j) \quad \text{et} \quad H_{y,n}(j) = \sum_{i} I_n(i, j)
 \end{align}
+\vspace{-1.5em}
 \begin{align} % 2. Définition explicite de la normalisation (Chapeau) :
     \hat{H}_{x,n}(i) = \frac{H_{x,n}(i)}{\sum_{i} H_{x,n}(i)} \quad \text{et} \quad \hat{H}_{y,n}(j) = \frac{H_{y,n}(j)}{\sum_{j} H_{y,n}(j)}
 \end{align}
+\vspace{-1em}
 \begin{align} % 3. Mesures de similarité :
     Coef_{Bhattacharyya}(\hat{H}_n, \hat{H}_{n-1}) &= \sum_{k} \sqrt{\hat{H}_n(k) \cdot \hat{H}_{n-1}(k)}
 \end{align}
+\vspace{-1.5em}
 \begin{align} % 4. Distance de Hellinger (métrique) :
     Distance_{Bhattacharyya}(\hat{H}_n, \hat{H}_{n-1}) &= \sqrt{1 - BC(\hat{H}_n, \hat{H}_{n-1})}
 \end{align}
@@ -445,10 +484,12 @@ Appliqué à notre vidéo témoin, cette méthode sans overlay fournit une dista
 Avec overlay des masques voisins, la distance moyenne tombe à environ $0{,}156$, ce qui correspond à un score de stabilité de $84{,}41\,\%$.
 Ces résultats suggèrent que l'agrégation locale des masques voisins améliore légèrement la stabilité mesurée, ou d'un autre point de vue, que l'overlay n'augmente pas significativement le score mesuré.
 
+\rapportfigure{bhattacharyya_simple_v3.png}{0.7}{Distribution et évolution temporelle de la distance de Bhattacharyya sans overlay.}{fig:bhatta_simple}
+\rapportfigure{bhattacharyya_overlay_v3.png}{0.7}{Distribution et évolution temporelle de la distance de Bhattacharyya avec overlay de masques voisins.}{fig:bhatta_overlay}
 
 \subsection{Matrices de confusion}
-Des matrices de confusion ont été aussi générée sur notre vidéo témoin, en comparaison avec une annotation manuelle de l'ensemble des $1329$ frames.
-Cette annotation a été réalisée de manière à punir mêmes les erreurs les moins visibles (parfois se jouant quelques vingtaines de pixels manquants).
+Des matrices de confusion ont également été générées sur notre vidéo témoin, en comparaison avec une annotation manuelle de l'ensemble des $1329$ frames.
+Cette annotation a été réalisée de manière à pénaliser même les erreurs les moins visibles (parfois se jouant quelques vingtaines de pixels manquants).
 La donnée la plus importante est avant tout la capacité du modèle à repérer les vrais positifs (bug effectif et bug repéré), puisque nous voulons idéalement trouver toutes les frames réellement problématiques.
 Cela nous permettrait par exemple de procéder à un second passage sur ces frames pour en ajuster la qualité.
 
@@ -485,6 +526,7 @@ OK (1)  & 0.62 & 0.90 & 0.73 \\
 Ces résultats montrent que la méthode détecte plus facilement les zones stables que les erreurs, ce qui est normal car la majorité des frames sont bonnes.
 Autrement dit, elle est assez performante pour confirmer qu'une séquence est cohérente, mais plus limitée pour identifier de façon fiable toutes les frames réellement problématiques.
 
+\rapportfigure{confusion_etat_sans_overlay_v3.png}{0.6}{Matrice de confusion associée à la détection des frames correctes et incorrectes, sans overlay.}{fig:confusion-etat}
 
 Pour l'évaluation des changements d'état, l'indicateur semble naïvement performant puisque la distance de Bhattacharyya est grande lors des grandes variations des histogrammes.
 
@@ -512,13 +554,15 @@ CHANGEMENT (1) & 0.10 & 0.15 & 0.12 \\
 \end{tabular}
 \end{center}
 
+\rapportfigure{confusion_changements_sans_overlay_v3.png}{0.6}{Matrice de confusion associée à la détection des changements d'état, sans overlay.}{fig:confusion-changement}
 
 On remarque alors que les frames de variation ne sont pas particulièrement bien détectées. On peut expliquer cela par le fait que les variations minimes ont été punies lors de l'annotation manuelle, qui sont donc difficiles à repérer depuis les histogrammes.
 On retrouve une asymétrie importante entre la détection des états stables et celle des changements, car les frames marquées BUG sont souvent adjacentes.
 Il y a encore moins de frames notées BUG dans ces matrices de corrélation pour cette raison.
 
-La conclusion logique pour cette métrique est assez décalée par rapport à la réalité terrain et ne ne représente pas correctement la stabilité réelle. Son score, même s'il est proche de la réalité, est davantage de l'ordre de la coïncidence que de la performance de la segmentation.
+La conclusion logique pour cette métrique est assez décalée par rapport à la réalité terrain et ne représente pas correctement la stabilité réelle. Son score, même s'il est proche de la réalité, est davantage de l'ordre de la coïncidence que de la performance de la segmentation.
 
+\newpage % FOR FORMATTING PURPOSES.
 \subsection{Aidemos / Convert Body To 3D}
 Nous avons également exploré une nouvelle famille de métriques reposant sur l'outil \texttt{Aidemos / Convert Body To 3D}, correspondant au modèle \texttt{SAM 3D Body}. Contrairement aux indicateurs précédents, qui reposent directement sur le masque binaire ou sur ses projections, cette approche cherche à mesurer la cohérence géométrique du corps reconstruit à partir du calque vidéo. L'idée n'est donc plus seulement d'étudier la variation du contour, mais d'analyser la stabilité de la structure corporelle estimée entre deux frames consécutives.
 
@@ -555,7 +599,7 @@ La transition $549 \rightarrow 550$, qui correspond au plus grand saut 3D observ
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.96\linewidth]{aidemos_transition_549_550.png}
+    \includegraphics[width=0.93\linewidth]{aidemos_transition_549_550.png}
     \caption{Exemple de transition anormale pour la métrique \texttt{Aidemos / Convert Body To 3D} : comparaison des frames $549$ et $550$, avec visualisation des points-clés 2D et de la reconstruction 3D correspondante.}
     \label{fig:aidemos_transition}
 \end{figure}
@@ -567,58 +611,41 @@ Cette approche présente cependant plusieurs limites. La première est son coût
 
 En résumé, la métrique basée sur \texttt{Aidemos / Convert Body To 3D} apporte un point de vue complémentaire aux métriques fondées sur l'aire ou sur les histogrammes. Elle ne remplace pas les indicateurs plus simples, mais elle permet de détecter des incohérences d'un autre type, davantage liées à la cohérence corporelle de la danseuse qu'à la seule forme du masque. Dans l'état actuel du projet, nous la considérons donc comme une métrique exploratoire prometteuse, particulièrement intéressante pour analyser des anomalies fortes, mais encore trop coûteuse et trop sensible à l'échec de reconstruction pour constituer à elle seule un score final de qualité vidéo.
 
-
+\newpage
 
 \section{Discussion et perspectives d'amélioration}
 Le travail réalisé met en évidence plusieurs enseignements.
-
 Tout d'abord, l'analyse de pose et la segmentation répondent à des besoins différents mais complémentaires.
 Plus précisément, les deux méthodes se distinguent ainsi :
 \begin{itemize}
     \item Dans la \textit{Méthode 1}, l'analyse de pose permet de structurer la scène et de localiser approximativement la danseuse, tandis que la segmentation fournit l'information précise nécessaire à la production d'une vidéo détourée exploitable.
-          La combinaison \texttt{NLF} + \texttt{SAM 2} constitue ainsi un compromis fonctionnel entre robustesse, disponibilité des outils et intégration pratique dans Colab.
-    \item La \textit{Méthode 2} modifie cependant cet équilibre.
-          En remplaçant totalement \texttt{NLF} et \texttt{SAM 2} par \texttt{SAM 3}, elle supprime l'étape de pose comme guide de segmentation et produit des calques plus cohérents sur la vidéo témoin, notamment sur les parties fines.
-          En revanche, cette amélioration qualitative s'accompagne d'un coût computationnel beaucoup plus élevé. Les deux approches apparaissent alors comme complémentaires : la \textit{Méthode 1} reste plus légère et mieux adaptée aux expérimentations rapides, tandis que la \textit{Méthode 2} fournit une segmentation plus convaincante mais plus coûteuse.
+    La combinaison \texttt{NLF} + \texttt{SAM 2} constitue ainsi un compromis fonctionnel, relativement rapide et pratique à expérimenter dans Colab.
+    \item La \textit{Méthode 2} modifie cet équilibre : en remplaçant \texttt{NLF} et \texttt{SAM 2} par \texttt{SAM 3}, elle supprime l'étape de pose comme guide de segmentation et produit des calques plus cohérents sur la vidéo témoin, notamment sur les parties fines.
+    En revanche, cette amélioration qualitative s'accompagne d'un coût computationnel beaucoup plus élevé.
 \end{itemize}
+Les deux approches apparaissent donc complémentaires : la \textit{Méthode 1} reste plus légère et mieux adaptée aux expérimentations rapides, tandis que la \textit{Méthode 2} fournit une segmentation plus convaincante mais plus coûteuse.
 
 Ensuite, la mise en place de métriques d'évaluation s'est révélée essentielle.
 Sans elles, l'analyse du pipeline resterait limitée à des impressions visuelles.
-Même imparfaites, les métriques basées sur l'aire, les histogrammes et les matrices de confusion permettent d'objectiver certaines faiblesses du système et d'identifier des frames à inspecter en priorité.
+Même imparfaites, les métriques basées sur l'aire, les histogrammes, les matrices de confusion et la cohérence corporelle 3D permettent d'objectiver certaines faiblesses du système et d'identifier des frames à inspecter en priorité.
 
 Enfin, le projet met aussi en évidence la difficulté d'obtenir une segmentation réellement robuste dans un contexte de danse.
 Les positions extrêmes, les auto-occlusions, la finesse des cheveux et la nécessité de conserver une cohérence temporelle rendent le problème plus difficile qu'une simple segmentation d'objet sur image fixe.
-
-\vspace{1cm}
-
-Les perspectives d'amélioration sont nombreuses.
-Parmi les plus importantes, on peut citer :
-\begin{itemize}
-    \item L'optimisation de la \textit{Méthode 2}, afin de bénéficier de la qualité de \texttt{SAM 3} avec un coût d'exécution plus raisonnable,
-    \item L'enrichissement et le raffinement des métriques de qualité,
-    \item L'automatisation plus poussée de la réinsertion sur un nouveau fond.
-\end{itemize}
-
-
+Les principales perspectives sont donc l'optimisation de la \textit{Méthode 2}, l'enrichissement des métriques de qualité et l'automatisation plus poussée de la réinsertion sur un nouveau fond.
 
 \section{Conclusion}
 Au terme de ce TER, nous avons mis en place deux chaînes de traitement exploitables pour analyser des vidéos de danseurs acrobatiques, isoler le danseur présent dans la scène, le réinsérer sur un nouveau fond et évaluer quantitativement la qualité de la segmentation obtenue.
 
 Plus précisément, deux méthodes principales ont été étudiées :
 \begin{itemize}
-    \item La première méthode, composée de \texttt{NLF} + \texttt{SAM 2}, constitue une démarche qualitative dans l'ensemble avec un temps d'exécution relativement court.
-    \begin{itemize}
-        \item Cette approche est satisfaisante, bien que les résultats présentent de légers manques que l'œil humain remarque facilement (oscillations, pertes ponctuelles de membres). Ce pipeline est alors difficilement utilisable dans le contexte des deepfakes, mais présente tout de même une bonne stabilité pour obtenir un aperçu en peu de temps.
-        \item La \textit{Méthode 1} est donc particulièrement adaptée aux expérimentations rapides et à l'étude des métriques d'estimation de qualité de reconstruction vidéo. Elle reste ainsi une bonne base méthodologique pour une exploration rapide sur plusieurs vidéos.
-    \end{itemize}
-    \item La seconde méthode, composée de \texttt{SAM 3}, produit un rendu globalement bien plus qualitatif que la \textit{Méthode 1}, au prix d'une exécution plus longue.
-    \begin{itemize}
-        \item Cette approche rend des résultats très convaincants, parfois proches de la perfection, pouvant tromper un œil non-averti, ce qui la rend adaptée dans le contexte des deepfakes. En contrepartie, le coût temporel d'exécution est beaucoup plus élevé (environ 4 à 5 fois plus long que la \textit{Méthode 1}).
-        \item La \textit{Méthode 2} apparaît donc comme une alternative de meilleure qualité visuelle pour la segmentation elle-même.
-    \end{itemize}
+    \item La première méthode, composée de \texttt{NLF} + \texttt{SAM 2}, constitue une démarche fonctionnelle avec un temps d'exécution relativement court.
+    Elle fournit des résultats globalement satisfaisants et forme une bonne base pour les expérimentations rapides ainsi que pour l'étude des métriques de qualité, même si certains défauts visibles subsistent, notamment des oscillations ou des pertes ponctuelles de membres.
+    \item La seconde méthode, composée de \texttt{SAM 3}, produit un rendu globalement plus qualitatif et des masques plus cohérents que la \textit{Méthode 1}.
+    Les résultatns obtenus par cette approche sont très convaincants, parfois proches de la perfection, pouvant tromper un œil non averti, ce qui la rend adaptée dans le contexte des deepfakes.
+    Elle constitue donc une alternative de meilleure qualité visuelle pour la segmentation elle-même, mais au prix d'un temps d'exécution beaucoup plus élevé, environ 4 à 5 fois plus long.
 \end{itemize}
 
-Les deux approches doivent à ce stade être vues comme complémentaires plutôt que concurrentes : la \textit{Méthode 1} est plus économique et plus flexible, tandis que la \textit{Méthode 2} est plus coûteuse mais plus performante qualitativement.
+Les deux approches doivent à ce stade être vues comme complémentaires plutôt que concurrentes : la \textit{Méthode 1} est plus économique et plus flexible (pour les tests de métriques), tandis que la \textit{Méthode 2} est plus coûteuse mais plus performante qualitativement.
 
 \newpage
 \section*{Bibliographie}
@@ -812,7 +839,7 @@ Pour deux squelettes reconstruits \(X,Y \in \mathbb{R}^{n \times 3}\), on compar
 {\footnotesize
     \(
         \begin{aligned}
-            &X,Y \in \mathbb{R}^{3n} \text{ : squelettes 3D reconstruits sur deux frames successives} \\
+            &X,Y \in \mathbb{R}^{n \times 3} \text{ : squelettes 3D reconstruits sur deux frames successives} \\
             &n \text{ : nombre de points-clés 3D valides} \\
             &s \text{ : facteur d'échelle} \\
             &R \text{ : matrice de rotation orthogonale} \\
